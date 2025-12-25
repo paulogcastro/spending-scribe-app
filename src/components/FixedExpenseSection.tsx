@@ -64,27 +64,31 @@ export function FixedExpenseSection({
       <div className="space-y-2">
         {/* Header */}
         <div className={`grid ${isCarro ? 'grid-cols-12' : 'grid-cols-10'} gap-2 text-xs text-muted-foreground font-medium px-2`}>
-          <div className={isCarro ? 'col-span-4' : 'col-span-4'}>Descrição</div>
+          <div className={isCarro ? 'col-span-3' : 'col-span-4'}>Descrição</div>
+          {isCarro && <div className="col-span-2 text-center">Parcelas</div>}
           <div className={isCarro ? 'col-span-3' : 'col-span-3'} style={{ textAlign: 'right' }}>Projetado</div>
           <div className={isCarro ? 'col-span-3' : 'col-span-3'} style={{ textAlign: 'right' }}>Atual</div>
-          {isCarro && <div className="col-span-2 text-center">Parcelas</div>}
+          <div className="col-span-1"></div>
         </div>
 
         {/* Items */}
         {items.map((item) => (
           <div key={item.id} className={`grid ${isCarro ? 'grid-cols-12' : 'grid-cols-10'} gap-2 items-center py-2 px-2 rounded-lg hover:bg-muted/50 group`}>
-            <div className={isCarro ? 'col-span-4' : 'col-span-4'} style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <div className={isCarro ? 'col-span-3' : 'col-span-4'} style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
               <span className="truncate">{item.description}</span>
               {item.note && <span className="text-xs text-muted-foreground">{item.note}</span>}
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6 opacity-0 group-hover:opacity-100 shrink-0"
-                onClick={() => onRemove(item.id)}
-              >
-                <Trash2 className="h-3 w-3 text-destructive" />
-              </Button>
             </div>
+            {isCarro && (
+              <div className="col-span-2">
+                <Input
+                  type="text"
+                  placeholder="1/12"
+                  value={item.installments || ''}
+                  onChange={(e) => onUpdate(item.id, { installments: e.target.value })}
+                  className="h-8 text-center text-sm"
+                />
+              </div>
+            )}
             <div className={isCarro ? 'col-span-3' : 'col-span-3'}>
               <Input
                 type="number"
@@ -101,24 +105,23 @@ export function FixedExpenseSection({
                 className="h-8 text-right text-sm"
               />
             </div>
-            {isCarro && (
-              <div className="col-span-2">
-                <Input
-                  type="text"
-                  placeholder="1/12"
-                  value={item.installments || ''}
-                  onChange={(e) => onUpdate(item.id, { installments: e.target.value })}
-                  className="h-8 text-center text-sm"
-                />
-              </div>
-            )}
+            <div className="col-span-1 flex justify-end">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 shrink-0"
+                onClick={() => onRemove(item.id)}
+              >
+                <Trash2 className="h-3 w-3 text-destructive" />
+              </Button>
+            </div>
           </div>
         ))}
 
         {/* Add new item */}
         {isAdding && (
           <div className={`grid ${isCarro ? 'grid-cols-12' : 'grid-cols-10'} gap-2 items-center py-2 px-2 bg-muted/30 rounded-lg`}>
-            <div className={isCarro ? 'col-span-4' : 'col-span-4'}>
+            <div className={isCarro ? 'col-span-3' : 'col-span-4'}>
               <Input
                 placeholder="Descrição"
                 value={newItem.description}
@@ -127,6 +130,17 @@ export function FixedExpenseSection({
                 autoFocus
               />
             </div>
+            {isCarro && (
+              <div className="col-span-2">
+                <Input
+                  type="text"
+                  placeholder="1/12"
+                  value={newItem.installments}
+                  onChange={(e) => setNewItem({ ...newItem, installments: e.target.value })}
+                  className="h-8 text-center text-sm"
+                />
+              </div>
+            )}
             <div className={isCarro ? 'col-span-3' : 'col-span-3'}>
               <Input
                 type="number"
@@ -145,36 +159,14 @@ export function FixedExpenseSection({
                 className="h-8 text-right text-sm"
               />
             </div>
-            {isCarro ? (
-              <>
-                <div className="col-span-2">
-                  <Input
-                    type="text"
-                    placeholder="1/12"
-                    value={newItem.installments}
-                    onChange={(e) => setNewItem({ ...newItem, installments: e.target.value })}
-                    className="h-8 text-center text-sm"
-                  />
-                </div>
-                <div className="col-span-12 flex justify-end gap-1 mt-2">
-                  <Button size="sm" variant="ghost" onClick={() => setIsAdding(false)}>
-                    Cancelar
-                  </Button>
-                  <Button size="sm" onClick={handleAdd}>
-                    Salvar
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="col-span-3 flex justify-end gap-1">
-                <Button size="sm" variant="ghost" onClick={() => setIsAdding(false)}>
-                  Cancelar
-                </Button>
-                <Button size="sm" onClick={handleAdd}>
-                  Salvar
-                </Button>
-              </div>
-            )}
+            <div className="col-span-1 flex justify-end gap-1">
+              <Button size="sm" variant="ghost" onClick={() => setIsAdding(false)}>
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={handleAdd}>
+                Salvar
+              </Button>
+            </div>
           </div>
         )}
 
@@ -187,10 +179,11 @@ export function FixedExpenseSection({
         {/* Total */}
         {items.length > 0 && (
           <div className={`grid ${isCarro ? 'grid-cols-12' : 'grid-cols-10'} gap-2 items-center py-2 px-2 border-t border-border mt-2 font-medium`}>
-            <div className={isCarro ? 'col-span-4' : 'col-span-4'} style={{ fontSize: '0.875rem' }}>Total {title}</div>
+            <div className={isCarro ? 'col-span-3' : 'col-span-4'} style={{ fontSize: '0.875rem' }}>Total {title}</div>
+            {isCarro && <div className="col-span-2"></div>}
             <div className={isCarro ? 'col-span-3' : 'col-span-3'} style={{ textAlign: 'right', fontSize: '0.875rem' }}>{formatCurrency(totalPlanned)}</div>
             <div className={isCarro ? 'col-span-3' : 'col-span-3'} style={{ textAlign: 'right', fontSize: '0.875rem' }}>{formatCurrency(totalActual)}</div>
-            {isCarro && <div className="col-span-2"></div>}
+            <div className="col-span-1"></div>
           </div>
         )}
       </div>

@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useFinances } from '@/hooks/useFinances';
 import { MonthSelector } from '@/components/MonthSelector';
 import { IncomeSection } from '@/components/IncomeSection';
+import { InvestmentSection } from '@/components/InvestmentSection';
 import { FixedExpenseSection } from '@/components/FixedExpenseSection';
 import { InstallmentSection } from '@/components/InstallmentSection';
 import { DailyExpenseSection } from '@/components/DailyExpenseSection';
@@ -9,6 +10,7 @@ import { SummaryPanel } from '@/components/SummaryPanel';
 import { Wallet, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { ExpenseGoals } from '@/types/finance';
 
 const Index = () => {
   const now = new Date();
@@ -21,6 +23,11 @@ const Index = () => {
     addIncome,
     updateIncome,
     removeIncome,
+    addInvestment,
+    updateInvestment,
+    removeInvestment,
+    setInvestmentGoal,
+    setExpenseGoal,
     addFixedExpense,
     updateFixedExpense,
     removeFixedExpense,
@@ -57,6 +64,31 @@ const Index = () => {
   const handleRemoveIncome = useCallback(
     (id: string) => removeIncome(selectedYear, selectedMonth, id),
     [removeIncome, selectedYear, selectedMonth]
+  );
+
+  const handleAddInvestment = useCallback(
+    (item: Parameters<typeof addInvestment>[2]) => addInvestment(selectedYear, selectedMonth, item),
+    [addInvestment, selectedYear, selectedMonth]
+  );
+
+  const handleUpdateInvestment = useCallback(
+    (id: string, updates: Parameters<typeof updateInvestment>[3]) => updateInvestment(selectedYear, selectedMonth, id, updates),
+    [updateInvestment, selectedYear, selectedMonth]
+  );
+
+  const handleRemoveInvestment = useCallback(
+    (id: string) => removeInvestment(selectedYear, selectedMonth, id),
+    [removeInvestment, selectedYear, selectedMonth]
+  );
+
+  const handleInvestmentGoalChange = useCallback(
+    (value: number) => setInvestmentGoal(selectedYear, selectedMonth, value),
+    [setInvestmentGoal, selectedYear, selectedMonth]
+  );
+
+  const handleExpenseGoalChange = useCallback(
+    (group: keyof ExpenseGoals, value: number) => setExpenseGoal(selectedYear, selectedMonth, group, value),
+    [setExpenseGoal, selectedYear, selectedMonth]
   );
 
   const handleAddFixedCasa = useCallback(
@@ -162,13 +194,21 @@ const Index = () => {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Left Column - Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Income */}
-            <IncomeSection
-              items={monthData.income}
-              onAdd={handleAddIncome}
-              onUpdate={handleUpdateIncome}
-              onRemove={handleRemoveIncome}
-            />
+            {/* Income & Investments */}
+            <div className="flex gap-6">
+              <IncomeSection
+                items={monthData.income}
+                onAdd={handleAddIncome}
+                onUpdate={handleUpdateIncome}
+                onRemove={handleRemoveIncome}
+              />
+              <InvestmentSection
+                items={monthData.investments || []}
+                onAdd={handleAddInvestment}
+                onUpdate={handleUpdateInvestment}
+                onRemove={handleRemoveInvestment}
+              />
+            </div>
 
             {/* Fixed Expenses - Casa & Carro */}
             <div className="grid gap-6 md:grid-cols-2">
@@ -212,15 +252,24 @@ const Index = () => {
           <aside className="space-y-6">
             <div className="sticky top-24">
               <SummaryPanel
-                incomePlanned={summary.incomePlanned}
-                incomeActual={summary.incomeActual}
                 expensesPlanned={summary.expensesPlanned}
                 expensesActual={summary.expensesActual}
+                casaPlanned={summary.casaPlanned}
                 casaActual={summary.casaActual}
+                carroPlanned={summary.carroPlanned}
                 carroActual={summary.carroActual}
-                parceladosValue={summary.parceladosValue}
+                parceladosPlanned={summary.parceladosPlanned}
+                parceladosActual={summary.parceladosActual}
                 diariasTotal={summary.diariasTotal}
+                diariasGoal={summary.diariasGoal}
+                incomeActual={summary.incomeActual}
+                investmentsTotal={summary.investmentsTotal}
+                investmentGoal={summary.investmentGoal}
                 result={summary.result}
+                resultAfterInvestment={summary.resultAfterInvestment}
+                expenseGoals={summary.expenseGoals}
+                onInvestmentGoalChange={handleInvestmentGoalChange}
+                onExpenseGoalChange={handleExpenseGoalChange}
               />
             </div>
           </aside>

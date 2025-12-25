@@ -5,9 +5,10 @@ import {
   InstallmentItem,
   DailyExpense,
   IncomeItem,
+  InvestmentItem,
   DailyCategory,
   PaymentSource,
-  calculateInstallmentValue,
+  ExpenseGoals,
 } from '@/types/finance';
 
 const STORAGE_KEY = 'finance-tracker-data';
@@ -24,6 +25,14 @@ function createEmptyMonthData(yearMonth: string): MonthlyData {
     carro: [],
     parcelados: [],
     diarias: [],
+    investments: [],
+    investmentGoal: 0,
+    expenseGoals: {
+      casa: 0,
+      carro: 0,
+      parcelados: 0,
+      diarias: 0,
+    },
   };
 }
 
@@ -50,7 +59,13 @@ export function useFinances() {
   // Get or create month data
   const getMonthData = useCallback((year: number, month: number): MonthlyData => {
     const key = getYearMonth(year, month);
-    return data[key] || createEmptyMonthData(key);
+    const stored = data[key];
+    if (!stored) return createEmptyMonthData(key);
+    // Ensure new fields exist for backwards compatibility
+    return {
+      ...createEmptyMonthData(key),
+      ...stored,
+    };
   }, [data]);
 
   // Update month data
@@ -83,6 +98,46 @@ export function useFinances() {
     updateMonthData(year, month, (prev) => ({
       ...prev,
       income: prev.income.filter((item) => item.id !== id),
+    }));
+  }, [updateMonthData]);
+
+  // === INVESTMENTS ===
+  const addInvestment = useCallback((year: number, month: number, item: Omit<InvestmentItem, 'id'>) => {
+    updateMonthData(year, month, (prev) => ({
+      ...prev,
+      investments: [...(prev.investments || []), { ...item, id: crypto.randomUUID() }],
+    }));
+  }, [updateMonthData]);
+
+  const updateInvestment = useCallback((year: number, month: number, id: string, updates: Partial<InvestmentItem>) => {
+    updateMonthData(year, month, (prev) => ({
+      ...prev,
+      investments: (prev.investments || []).map((item) => item.id === id ? { ...item, ...updates } : item),
+    }));
+  }, [updateMonthData]);
+
+  const removeInvestment = useCallback((year: number, month: number, id: string) => {
+    updateMonthData(year, month, (prev) => ({
+      ...prev,
+      investments: (prev.investments || []).filter((item) => item.id !== id),
+    }));
+  }, [updateMonthData]);
+
+  const setInvestmentGoal = useCallback((year: number, month: number, goal: number) => {
+    updateMonthData(year, month, (prev) => ({
+      ...prev,
+      investmentGoal: goal,
+    }));
+  }, [updateMonthData]);
+
+  // === EXPENSE GOALS ===
+  const setExpenseGoal = useCallback((year: number, month: number, group: keyof ExpenseGoals, goal: number) => {
+    updateMonthData(year, month, (prev) => ({
+      ...prev,
+      expenseGoals: {
+        ...prev.expenseGoals,
+        [group]: goal,
+      },
     }));
   }, [updateMonthData]);
 
@@ -123,16 +178,13 @@ export function useFinances() {
   const addInstallment = useCallback((
     year: number, 
     month: number, 
-    item: Omit<InstallmentItem, 'id' | 'currentInstallment' | 'startDate'>
+    item: Omit<InstallmentItem, 'id'>
   ) => {
-    const startDate = getYearMonth(year, month);
     updateMonthData(year, month, (prev) => ({
       ...prev,
       parcelados: [...prev.parcelados, { 
         ...item, 
         id: crypto.randomUUID(),
-        currentInstallment: 1,
-        startDate,
       }],
     }));
   }, [updateMonthData]);
@@ -186,10 +238,7 @@ export function useFinances() {
   }, []);
 
   const calculateInstallmentsTotal = useCallback((items: InstallmentItem[], type: 'planned' | 'actual'): number => {
-    return items.reduce((sum, item) => {
-      const value = calculateInstallmentValue(item);
-      return sum + value;
-    }, 0);
+    return items.reduce((sum, item) => sum + item[type], 0);
   }, []);
 
   const calculateDailyTotal = useCallback((items: DailyExpense[]): number => {
@@ -198,6 +247,10 @@ export function useFinances() {
 
   const calculateIncomeTotal = useCallback((items: IncomeItem[], type: 'planned' | 'actual'): number => {
     return items.reduce((sum, item) => sum + item[type], 0);
+  }, []);
+
+  const calculateInvestmentTotal = useCallback((items: InvestmentItem[]): number => {
+    return items.reduce((sum, item) => sum + item.amount, 0);
   }, []);
 
   const getDailyByCategory = useCallback((items: DailyExpense[]): Record<DailyCategory, number> => {
@@ -218,7 +271,6 @@ export function useFinances() {
   const getMonthSummary = useCallback((year: number, month: number) => {
     const monthData = getMonthData(year, month);
     
-    const incomePlanned = calculateIncomeTotal(monthData.income, 'planned');
     const incomeActual = calculateIncomeTotal(monthData.income, 'actual');
     
     const casaPlanned = calculateGroupTotal(monthData.casa, 'planned');
@@ -227,15 +279,22 @@ export function useFinances() {
     const carroPlanned = calculateGroupTotal(monthData.carro, 'planned');
     const carroActual = calculateGroupTotal(monthData.carro, 'actual');
     
-    const parceladosValue = calculateInstallmentsTotal(monthData.parcelados, 'actual');
+    const parceladosPlanned = calculateInstallmentsTotal(monthData.parcelados, 'planned');
+    const parceladosActual = calculateInstallmentsTotal(monthData.parcelados, 'actual');
     
     const diariasTotal = calculateDailyTotal(monthData.diarias);
+    const diariasGoal = monthData.expenseGoals?.diarias || 0;
     
-    const expensesPlanned = casaPlanned + carroPlanned + parceladosValue;
-    const expensesActual = casaActual + carroActual + parceladosValue + diariasTotal;
+    const investmentsTotal = calculateInvestmentTotal(monthData.investments || []);
+    const investmentGoal = monthData.investmentGoal || 0;
+    
+    const expensesPlanned = casaPlanned + carroPlanned + parceladosPlanned + diariasGoal;
+    const expensesActual = casaActual + carroActual + parceladosActual + diariasTotal;
+    
+    const result = incomeActual - expensesActual;
+    const resultAfterInvestment = result - investmentGoal;
     
     return {
-      incomePlanned,
       incomeActual,
       expensesPlanned,
       expensesActual,
@@ -243,11 +302,17 @@ export function useFinances() {
       casaActual,
       carroPlanned,
       carroActual,
-      parceladosValue,
+      parceladosPlanned,
+      parceladosActual,
       diariasTotal,
-      result: incomeActual - expensesActual,
+      diariasGoal,
+      investmentsTotal,
+      investmentGoal,
+      result,
+      resultAfterInvestment,
+      expenseGoals: monthData.expenseGoals || { casa: 0, carro: 0, parcelados: 0, diarias: 0 },
     };
-  }, [getMonthData, calculateIncomeTotal, calculateGroupTotal, calculateInstallmentsTotal, calculateDailyTotal]);
+  }, [getMonthData, calculateIncomeTotal, calculateGroupTotal, calculateInstallmentsTotal, calculateDailyTotal, calculateInvestmentTotal]);
 
   // === COPY FIXED DATA TO NEXT MONTH ===
   const copyToNextMonth = useCallback((year: number, month: number) => {
@@ -265,12 +330,14 @@ export function useFinances() {
       casa: currentData.casa.map((item) => ({ ...item, id: crypto.randomUUID(), actual: 0 })),
       carro: currentData.carro.map((item) => ({ ...item, id: crypto.randomUUID(), actual: 0 })),
       parcelados: currentData.parcelados
-        .filter((item) => item.currentInstallment < item.installments)
+        .filter((item) => item.isRecurring || (item.installments && item.installments.includes('/')))
         .map((item) => ({ 
           ...item, 
-          id: crypto.randomUUID(), 
-          currentInstallment: item.currentInstallment + 1 
+          id: crypto.randomUUID(),
+          actual: 0,
         })),
+      investmentGoal: currentData.investmentGoal,
+      expenseGoals: currentData.expenseGoals,
     }));
   }, [getMonthData, updateMonthData]);
 
@@ -280,6 +347,13 @@ export function useFinances() {
     addIncome,
     updateIncome,
     removeIncome,
+    // Investments
+    addInvestment,
+    updateInvestment,
+    removeInvestment,
+    setInvestmentGoal,
+    // Expense goals
+    setExpenseGoal,
     // Fixed expenses
     addFixedExpense,
     updateFixedExpense,
@@ -296,6 +370,7 @@ export function useFinances() {
     calculateInstallmentsTotal,
     calculateDailyTotal,
     calculateIncomeTotal,
+    calculateInvestmentTotal,
     getDailyByCategory,
     getMonthSummary,
     // Utils
