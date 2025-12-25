@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DailyExpense, DailyCategory, dailyCategoryLabels, dailyCategoryIcons } from '@/types/finance';
+import { DailyExpense, DailyCategory, PaymentSource, dailyCategoryLabels, dailyCategoryIcons, paymentSourceLabels } from '@/types/finance';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Plus, Trash2, Receipt } from 'lucide-react';
 interface DailyExpenseSectionProps {
   items: DailyExpense[];
   budgetPlanned: number;
-  onAdd: (expense: { description: string; amount: number; category: DailyCategory; date: string }) => void;
+  onAdd: (expense: { description: string; amount: number; category: DailyCategory; source: PaymentSource; date: string }) => void;
   onRemove: (id: string) => void;
   onBudgetChange: (value: number) => void;
 }
@@ -26,6 +26,7 @@ export function DailyExpenseSection({
     description: '', 
     amount: '', 
     category: 'outros' as DailyCategory,
+    source: 'pix' as PaymentSource,
     date: new Date().toISOString().split('T')[0],
   });
 
@@ -44,12 +45,14 @@ export function DailyExpenseSection({
       description: newItem.description,
       amount: parseFloat(newItem.amount) || 0,
       category: newItem.category,
+      source: newItem.source,
       date: newItem.date,
     });
     setNewItem({ 
       description: '', 
       amount: '', 
       category: 'outros',
+      source: 'pix',
       date: new Date().toISOString().split('T')[0],
     });
     setIsAdding(false);
@@ -109,7 +112,7 @@ export function DailyExpenseSection({
               className="h-9"
             />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <Select 
               value={newItem.category} 
               onValueChange={(v) => setNewItem({ ...newItem, category: v as DailyCategory })}
@@ -121,6 +124,21 @@ export function DailyExpenseSection({
                 {(Object.keys(dailyCategoryLabels) as DailyCategory[]).map((cat) => (
                   <SelectItem key={cat} value={cat}>
                     {dailyCategoryIcons[cat]} {dailyCategoryLabels[cat]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select 
+              value={newItem.source} 
+              onValueChange={(v) => setNewItem({ ...newItem, source: v as PaymentSource })}
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(paymentSourceLabels) as PaymentSource[]).map((source) => (
+                  <SelectItem key={source} value={source}>
+                    {paymentSourceLabels[source]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -159,24 +177,41 @@ export function DailyExpenseSection({
         </div>
       )}
 
+      {/* Header */}
+      <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium px-2 mb-2">
+        <div className="col-span-3">Descrição</div>
+        <div className="col-span-2 text-center">Categoria</div>
+        <div className="col-span-2 text-center">Fonte</div>
+        <div className="col-span-2 text-center">Data</div>
+        <div className="col-span-2 text-right">Valor</div>
+        <div className="col-span-1"></div>
+      </div>
+
       {/* Items list */}
       <div className="space-y-1 max-h-80 overflow-y-auto">
         {sortedItems.map((item) => (
           <div 
             key={item.id} 
-            className="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-muted/50 group"
+            className="grid grid-cols-12 gap-2 items-center py-2 px-2 rounded-lg hover:bg-muted/50 group"
           >
-            <div className="flex items-center gap-3">
-              <span className="text-lg">{dailyCategoryIcons[item.category]}</span>
-              <div>
-                <div className="text-sm font-medium">{item.description}</div>
-                <div className="text-xs text-muted-foreground">
-                  {formatDate(item.date)} • {dailyCategoryLabels[item.category]}
-                </div>
-              </div>
+            <div className="col-span-3 text-sm font-medium truncate">{item.description}</div>
+            <div className="col-span-2 text-center">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted">
+                {dailyCategoryIcons[item.category]} {dailyCategoryLabels[item.category]}
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">{formatCurrency(item.amount)}</span>
+            <div className="col-span-2 text-center">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted">
+                {paymentSourceLabels[item.source]}
+              </span>
+            </div>
+            <div className="col-span-2 text-center text-sm text-muted-foreground">
+              {formatDate(item.date)}
+            </div>
+            <div className="col-span-2 text-right text-sm font-medium">
+              {formatCurrency(item.amount)}
+            </div>
+            <div className="col-span-1 flex justify-end">
               <Button
                 size="icon"
                 variant="ghost"
