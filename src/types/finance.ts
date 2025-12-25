@@ -34,8 +34,26 @@ export interface FixedExpenseItem {
   description: string;
   planned: number;
   actual: number;
+  installments?: string; // Para carro - ex: "1/12"
   note?: string; // Ex: "[Até Mar/26]"
 }
+
+// Tipo de cartão para parcelados
+export type CardType = 'cartao_mae' | 'cartao_inter';
+
+export const cardTypeLabels: Record<CardType, string> = {
+  cartao_mae: 'Cartão Mãe',
+  cartao_inter: 'Cartão Inter',
+};
+
+// Fonte de pagamento para despesas diárias
+export type PaymentSource = 'inter_credito' | 'pix' | 'neon';
+
+export const paymentSourceLabels: Record<PaymentSource, string> = {
+  inter_credito: 'Inter Crédito',
+  pix: 'Pix',
+  neon: 'Neon',
+};
 
 // Item parcelado
 export interface InstallmentItem {
@@ -45,6 +63,7 @@ export interface InstallmentItem {
   installments: number;
   currentInstallment: number;
   startDate: string; // YYYY-MM
+  card: CardType;
   note?: string;
 }
 
@@ -54,6 +73,7 @@ export interface DailyExpense {
   description: string;
   amount: number;
   category: DailyCategory;
+  source: PaymentSource;
   date: string;
   createdAt: string;
 }

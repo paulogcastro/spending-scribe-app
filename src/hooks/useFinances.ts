@@ -6,6 +6,7 @@ import {
   DailyExpense,
   IncomeItem,
   DailyCategory,
+  PaymentSource,
   calculateInstallmentValue,
 } from '@/types/finance';
 
@@ -159,7 +160,7 @@ export function useFinances() {
   const addDailyExpense = useCallback((
     year: number, 
     month: number, 
-    expense: { description: string; amount: number; category: DailyCategory; date: string }
+    expense: { description: string; amount: number; category: DailyCategory; source: PaymentSource; date: string }
   ) => {
     const newExpense: DailyExpense = {
       ...expense,

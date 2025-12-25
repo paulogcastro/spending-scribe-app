@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { InstallmentItem, calculateInstallmentValue, getInstallmentLabel } from '@/types/finance';
+import { InstallmentItem, CardType, cardTypeLabels, calculateInstallmentValue, getInstallmentLabel } from '@/types/finance';
 import { formatCurrency } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, CreditCard } from 'lucide-react';
 
 interface InstallmentSectionProps {
@@ -18,6 +19,7 @@ export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: Install
     description: '', 
     totalValue: '', 
     installments: '', 
+    card: 'cartao_inter' as CardType,
     note: '' 
   });
 
@@ -29,9 +31,10 @@ export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: Install
       description: newItem.description,
       totalValue: parseFloat(newItem.totalValue) || 0,
       installments: parseInt(newItem.installments) || 1,
+      card: newItem.card,
       note: newItem.note || undefined,
     });
-    setNewItem({ description: '', totalValue: '', installments: '', note: '' });
+    setNewItem({ description: '', totalValue: '', installments: '', card: 'cartao_inter', note: '' });
     setIsAdding(false);
   };
 
@@ -52,9 +55,10 @@ export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: Install
       <div className="space-y-2">
         {/* Header */}
         <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium px-2">
-          <div className="col-span-5">Descrição</div>
+          <div className="col-span-3">Descrição</div>
           <div className="col-span-2 text-right">Total</div>
           <div className="col-span-2 text-center">Parcelas</div>
+          <div className="col-span-2 text-center">Cartão</div>
           <div className="col-span-2 text-right">Mensal</div>
           <div className="col-span-1"></div>
         </div>
@@ -66,7 +70,7 @@ export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: Install
           
           return (
             <div key={item.id} className="grid grid-cols-12 gap-2 items-center py-2 px-2 rounded-lg hover:bg-muted/50 group">
-              <div className="col-span-5 text-sm">
+              <div className="col-span-3 text-sm">
                 <span>{item.description}</span>
                 {item.note && <span className="text-xs text-muted-foreground ml-1">{item.note}</span>}
               </div>
@@ -76,6 +80,11 @@ export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: Install
               <div className="col-span-2 text-center text-sm">
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-purple-500/10 text-purple-600">
                   {label}
+                </span>
+              </div>
+              <div className="col-span-2 text-center text-sm">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted">
+                  {cardTypeLabels[item.card]}
                 </span>
               </div>
               <div className="col-span-2 text-right text-sm font-medium">
@@ -113,7 +122,7 @@ export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: Install
                 className="h-9"
               />
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <Input
                 type="number"
                 placeholder="Valor total"
@@ -128,6 +137,21 @@ export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: Install
                 onChange={(e) => setNewItem({ ...newItem, installments: e.target.value })}
                 className="h-9"
               />
+              <Select 
+                value={newItem.card} 
+                onValueChange={(v) => setNewItem({ ...newItem, card: v as CardType })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(cardTypeLabels) as CardType[]).map((card) => (
+                    <SelectItem key={card} value={card}>
+                      {cardTypeLabels[card]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <div className="flex gap-2">
                 <Button variant="ghost" className="flex-1" onClick={() => setIsAdding(false)}>
                   Cancelar

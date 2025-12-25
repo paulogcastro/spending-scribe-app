@@ -23,15 +23,16 @@ export function FixedExpenseSection({
   onRemove 
 }: FixedExpenseSectionProps) {
   const [isAdding, setIsAdding] = useState(false);
-  const [newItem, setNewItem] = useState({ description: '', planned: '', actual: '', note: '' });
+  const [newItem, setNewItem] = useState({ description: '', planned: '', actual: '', installments: '', note: '' });
 
   const totalPlanned = items.reduce((sum, item) => sum + item.planned, 0);
   const totalActual = items.reduce((sum, item) => sum + item.actual, 0);
-  const difference = totalPlanned - totalActual;
 
   const Icon = type === 'casa' ? Home : Car;
   const iconColor = type === 'casa' ? 'text-blue-500' : 'text-orange-500';
   const bgColor = type === 'casa' ? 'bg-blue-500/10' : 'bg-orange-500/10';
+
+  const isCarro = type === 'carro';
 
   const handleAdd = () => {
     if (!newItem.description) return;
@@ -39,9 +40,10 @@ export function FixedExpenseSection({
       description: newItem.description,
       planned: parseFloat(newItem.planned) || 0,
       actual: parseFloat(newItem.actual) || 0,
+      installments: isCarro ? newItem.installments || undefined : undefined,
       note: newItem.note || undefined,
     });
-    setNewItem({ description: '', planned: '', actual: '', note: '' });
+    setNewItem({ description: '', planned: '', actual: '', installments: '', note: '' });
     setIsAdding(false);
   };
 
@@ -61,57 +63,62 @@ export function FixedExpenseSection({
 
       <div className="space-y-2">
         {/* Header */}
-        <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium px-2">
-          <div className="col-span-4">Descrição</div>
-          <div className="col-span-3 text-right">Projetado</div>
-          <div className="col-span-3 text-right">Atual</div>
-          <div className="col-span-2 text-right">Diferença</div>
+        <div className={`grid ${isCarro ? 'grid-cols-12' : 'grid-cols-10'} gap-2 text-xs text-muted-foreground font-medium px-2`}>
+          <div className={isCarro ? 'col-span-4' : 'col-span-4'}>Descrição</div>
+          <div className={isCarro ? 'col-span-3' : 'col-span-3'} style={{ textAlign: 'right' }}>Projetado</div>
+          <div className={isCarro ? 'col-span-3' : 'col-span-3'} style={{ textAlign: 'right' }}>Atual</div>
+          {isCarro && <div className="col-span-2 text-center">Parcelas</div>}
         </div>
 
         {/* Items */}
-        {items.map((item) => {
-          const diff = item.planned - item.actual;
-          return (
-            <div key={item.id} className="grid grid-cols-12 gap-2 items-center py-2 px-2 rounded-lg hover:bg-muted/50 group">
-              <div className="col-span-4 text-sm flex items-center gap-1">
-                <span className="truncate">{item.description}</span>
-                {item.note && <span className="text-xs text-muted-foreground">{item.note}</span>}
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-6 w-6 opacity-0 group-hover:opacity-100 shrink-0"
-                  onClick={() => onRemove(item.id)}
-                >
-                  <Trash2 className="h-3 w-3 text-destructive" />
-                </Button>
-              </div>
-              <div className="col-span-3">
-                <Input
-                  type="number"
-                  value={item.planned || ''}
-                  onChange={(e) => onUpdate(item.id, { planned: parseFloat(e.target.value) || 0 })}
-                  className="h-8 text-right text-sm"
-                />
-              </div>
-              <div className="col-span-3">
-                <Input
-                  type="number"
-                  value={item.actual || ''}
-                  onChange={(e) => onUpdate(item.id, { actual: parseFloat(e.target.value) || 0 })}
-                  className="h-8 text-right text-sm"
-                />
-              </div>
-              <div className={`col-span-2 text-right text-sm ${diff > 0 ? 'text-primary' : diff < 0 ? 'text-destructive' : ''}`}>
-                {diff === 0 ? '-' : formatCurrency(diff)}
-              </div>
+        {items.map((item) => (
+          <div key={item.id} className={`grid ${isCarro ? 'grid-cols-12' : 'grid-cols-10'} gap-2 items-center py-2 px-2 rounded-lg hover:bg-muted/50 group`}>
+            <div className={isCarro ? 'col-span-4' : 'col-span-4'} style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <span className="truncate">{item.description}</span>
+              {item.note && <span className="text-xs text-muted-foreground">{item.note}</span>}
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 shrink-0"
+                onClick={() => onRemove(item.id)}
+              >
+                <Trash2 className="h-3 w-3 text-destructive" />
+              </Button>
             </div>
-          );
-        })}
+            <div className={isCarro ? 'col-span-3' : 'col-span-3'}>
+              <Input
+                type="number"
+                value={item.planned || ''}
+                onChange={(e) => onUpdate(item.id, { planned: parseFloat(e.target.value) || 0 })}
+                className="h-8 text-right text-sm"
+              />
+            </div>
+            <div className={isCarro ? 'col-span-3' : 'col-span-3'}>
+              <Input
+                type="number"
+                value={item.actual || ''}
+                onChange={(e) => onUpdate(item.id, { actual: parseFloat(e.target.value) || 0 })}
+                className="h-8 text-right text-sm"
+              />
+            </div>
+            {isCarro && (
+              <div className="col-span-2">
+                <Input
+                  type="text"
+                  placeholder="1/12"
+                  value={item.installments || ''}
+                  onChange={(e) => onUpdate(item.id, { installments: e.target.value })}
+                  className="h-8 text-center text-sm"
+                />
+              </div>
+            )}
+          </div>
+        ))}
 
         {/* Add new item */}
         {isAdding && (
-          <div className="grid grid-cols-12 gap-2 items-center py-2 px-2 bg-muted/30 rounded-lg">
-            <div className="col-span-4">
+          <div className={`grid ${isCarro ? 'grid-cols-12' : 'grid-cols-10'} gap-2 items-center py-2 px-2 bg-muted/30 rounded-lg`}>
+            <div className={isCarro ? 'col-span-4' : 'col-span-4'}>
               <Input
                 placeholder="Descrição"
                 value={newItem.description}
@@ -120,7 +127,7 @@ export function FixedExpenseSection({
                 autoFocus
               />
             </div>
-            <div className="col-span-3">
+            <div className={isCarro ? 'col-span-3' : 'col-span-3'}>
               <Input
                 type="number"
                 placeholder="0.00"
@@ -129,7 +136,7 @@ export function FixedExpenseSection({
                 className="h-8 text-right text-sm"
               />
             </div>
-            <div className="col-span-3">
+            <div className={isCarro ? 'col-span-3' : 'col-span-3'}>
               <Input
                 type="number"
                 placeholder="0.00"
@@ -138,14 +145,36 @@ export function FixedExpenseSection({
                 className="h-8 text-right text-sm"
               />
             </div>
-            <div className="col-span-2 flex justify-end gap-1">
-              <Button size="sm" variant="ghost" onClick={() => setIsAdding(false)}>
-                Cancelar
-              </Button>
-              <Button size="sm" onClick={handleAdd}>
-                Salvar
-              </Button>
-            </div>
+            {isCarro ? (
+              <>
+                <div className="col-span-2">
+                  <Input
+                    type="text"
+                    placeholder="1/12"
+                    value={newItem.installments}
+                    onChange={(e) => setNewItem({ ...newItem, installments: e.target.value })}
+                    className="h-8 text-center text-sm"
+                  />
+                </div>
+                <div className="col-span-12 flex justify-end gap-1 mt-2">
+                  <Button size="sm" variant="ghost" onClick={() => setIsAdding(false)}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={handleAdd}>
+                    Salvar
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="col-span-3 flex justify-end gap-1">
+                <Button size="sm" variant="ghost" onClick={() => setIsAdding(false)}>
+                  Cancelar
+                </Button>
+                <Button size="sm" onClick={handleAdd}>
+                  Salvar
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -157,13 +186,11 @@ export function FixedExpenseSection({
 
         {/* Total */}
         {items.length > 0 && (
-          <div className="grid grid-cols-12 gap-2 items-center py-2 px-2 border-t border-border mt-2 font-medium">
-            <div className="col-span-4 text-sm">Total {title}</div>
-            <div className="col-span-3 text-right text-sm">{formatCurrency(totalPlanned)}</div>
-            <div className="col-span-3 text-right text-sm">{formatCurrency(totalActual)}</div>
-            <div className={`col-span-2 text-right text-sm ${difference > 0 ? 'text-primary' : difference < 0 ? 'text-destructive' : ''}`}>
-              {difference === 0 ? '-' : formatCurrency(difference)}
-            </div>
+          <div className={`grid ${isCarro ? 'grid-cols-12' : 'grid-cols-10'} gap-2 items-center py-2 px-2 border-t border-border mt-2 font-medium`}>
+            <div className={isCarro ? 'col-span-4' : 'col-span-4'} style={{ fontSize: '0.875rem' }}>Total {title}</div>
+            <div className={isCarro ? 'col-span-3' : 'col-span-3'} style={{ textAlign: 'right', fontSize: '0.875rem' }}>{formatCurrency(totalPlanned)}</div>
+            <div className={isCarro ? 'col-span-3' : 'col-span-3'} style={{ textAlign: 'right', fontSize: '0.875rem' }}>{formatCurrency(totalActual)}</div>
+            {isCarro && <div className="col-span-2"></div>}
           </div>
         )}
       </div>
