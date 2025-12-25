@@ -59,12 +59,19 @@ export const paymentSourceLabels: Record<PaymentSource, string> = {
 export interface InstallmentItem {
   id: string;
   description: string;
-  totalValue: number;
-  installments: number;
-  currentInstallment: number;
-  startDate: string; // YYYY-MM
+  planned: number;
+  actual: number;
+  installments?: string; // Ex: "1/12"
   card: CardType;
+  isRecurring?: boolean;
   note?: string;
+}
+
+// Investimento
+export interface InvestmentItem {
+  id: string;
+  description: string;
+  amount: number;
 }
 
 // Despesa diária
@@ -87,6 +94,14 @@ export interface IncomeItem {
   note?: string;
 }
 
+// Metas de gastos por grupo
+export interface ExpenseGoals {
+  casa: number;
+  carro: number;
+  parcelados: number;
+  diarias: number;
+}
+
 // Estado mensal completo
 export interface MonthlyData {
   yearMonth: string; // YYYY-MM
@@ -95,6 +110,9 @@ export interface MonthlyData {
   carro: FixedExpenseItem[];
   parcelados: InstallmentItem[];
   diarias: DailyExpense[];
+  investments: InvestmentItem[];
+  investmentGoal: number;
+  expenseGoals: ExpenseGoals;
 }
 
 // Estado global da aplicação
@@ -103,14 +121,6 @@ export interface FinanceState {
 }
 
 // Helpers para cálculos
-export function calculateInstallmentValue(item: InstallmentItem): number {
-  return item.totalValue / item.installments;
-}
-
-export function getInstallmentLabel(item: InstallmentItem): string {
-  return `(${item.currentInstallment}/${item.installments})`;
-}
-
 export function calculateDifference(planned: number, actual: number): number {
   return planned - actual;
 }
