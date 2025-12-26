@@ -86,10 +86,10 @@ export function InstallmentSection({
         <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium px-2">
           <div className="col-span-2">Descrição</div>
           <div className="col-span-1 text-center">Parcelas</div>
-          <div className="col-span-2 text-right">Atual</div>
+          <div className="col-span-2 text-right">Valor</div>
           <div className="col-span-2 text-center">Categoria</div>
           <div className="col-span-2 text-center">Cartão</div>
-          <div className="col-span-2 text-center">Recor.</div>
+          <div className="col-span-2 text-center">Recorrente</div>
           <div className="col-span-1"></div>
         </div>
 

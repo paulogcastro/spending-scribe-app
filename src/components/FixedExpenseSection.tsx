@@ -85,7 +85,7 @@ export function FixedExpenseSection({
           {isCarro && <div className="col-span-3 text-center">Parcelas</div>}
           <div className="col-span-2" style={{
           textAlign: 'right'
-        }}>Atual</div>
+        }}>Valor</div>
           <div className="col-span-1"></div>
         </div>
 
