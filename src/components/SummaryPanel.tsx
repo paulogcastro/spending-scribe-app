@@ -120,7 +120,7 @@ Investimento
           </div>
           <div className="flex items-center justify-between text-sm">
             <span>Investido</span>
-            <span className="font-medium text-emerald-600">{formatCurrency(investmentsTotal)}</span>
+            <span className="font-medium text-purple-400">{formatCurrency(investmentsTotal)}</span>
           </div>
           <div className={`p-3 rounded-lg ${isAfterInvestmentPositive ? 'bg-emerald-500/10' : 'bg-destructive/10'}`}>
             <div className="flex items-center justify-between">
