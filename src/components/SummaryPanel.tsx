@@ -122,7 +122,7 @@ Real </div>
           </div>
           <div className={`p-3 rounded-lg ${isAfterInvestmentPositive ? 'bg-emerald-500/10' : 'bg-destructive/10'}`}>
             <div className="flex items-center justify-between">
-              <span className="text-xs">Resultado - Meta Invest.</span>
+              <span className="text-xs">Resultado</span>
               <span className={`text-sm font-bold ${isAfterInvestmentPositive ? 'text-emerald-600' : 'text-destructive'}`}>
                 {formatCurrency(resultAfterInvestment)}
               </span>
