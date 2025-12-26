@@ -2,7 +2,6 @@ import { formatCurrency } from '@/lib/format';
 import { TrendingUp, TrendingDown, Wallet, Home, Car, CreditCard, Receipt, PiggyBank, Target, BarChart3 } from 'lucide-react';
 import { ExpenseGoals, ExpenseCategory, expenseCategoryLabels, expenseCategoryIcons } from '@/types/finance';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-
 interface SummaryPanelProps {
   expensesPlanned: number;
   expensesActual: number;
@@ -18,7 +17,6 @@ interface SummaryPanelProps {
   expenseGoals: ExpenseGoals;
   expensesByCategory: Record<ExpenseCategory, number>;
 }
-
 const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
   casa: 'hsl(217, 91%, 60%)',
   carro: 'hsl(25, 95%, 53%)',
@@ -28,9 +26,8 @@ const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
   hobbies: 'hsl(200, 80%, 50%)',
   saude: 'hsl(120, 60%, 45%)',
   roupa: 'hsl(45, 93%, 47%)',
-  outros: 'hsl(220, 10%, 50%)',
+  outros: 'hsl(220, 10%, 50%)'
 };
-
 export function SummaryPanel({
   expensesPlanned,
   expensesActual,
@@ -44,22 +41,18 @@ export function SummaryPanel({
   result,
   resultAfterInvestment,
   expenseGoals,
-  expensesByCategory,
+  expensesByCategory
 }: SummaryPanelProps) {
   const isPositive = result >= 0;
   const isAfterInvestmentPositive = resultAfterInvestment >= 0;
 
   // Prepare chart data
-  const chartData = Object.entries(expensesByCategory)
-    .filter(([_, value]) => value > 0)
-    .map(([category, value]) => ({
-      name: expenseCategoryLabels[category as ExpenseCategory],
-      value,
-      category: category as ExpenseCategory,
-    }));
-
-  return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+  const chartData = Object.entries(expensesByCategory).filter(([_, value]) => value > 0).map(([category, value]) => ({
+    name: expenseCategoryLabels[category as ExpenseCategory],
+    value,
+    category: category as ExpenseCategory
+  }));
+  return <div className="rounded-xl border border-border bg-card p-5 shadow-card">
       <h3 className="font-semibold mb-4 flex items-center gap-2">
         <Wallet className="h-4 w-4" />
         Resumo
@@ -69,7 +62,7 @@ export function SummaryPanel({
         {/* Expense summary */}
         <div className="grid grid-cols-3 gap-4 text-center">
           <div className="p-3 rounded-lg bg-muted/50">
-            <div className="text-xs text-muted-foreground mb-1">Meta Total</div>
+            <div className="text-xs text-muted-foreground mb-1">Gasto Projetado </div>
             <div className="text-sm font-semibold">{formatCurrency(expensesPlanned)}</div>
           </div>
           <div className="p-3 rounded-lg bg-muted/50">
@@ -212,67 +205,36 @@ export function SummaryPanel({
           </div>
           
           {/* Pie Chart */}
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
+          {chartData.length > 0 ? <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie
-                  data={chartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={70}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {chartData.map((entry) => (
-                    <Cell
-                      key={entry.category}
-                      fill={CATEGORY_COLORS[entry.category]}
-                      stroke="hsl(var(--background))"
-                      strokeWidth={2}
-                    />
-                  ))}
+                <Pie data={chartData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value">
+                  {chartData.map(entry => <Cell key={entry.category} fill={CATEGORY_COLORS[entry.category]} stroke="hsl(var(--background))" strokeWidth={2} />)}
                 </Pie>
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: 'var(--radius)',
-                    fontSize: '12px',
-                  }}
-                />
-                <Legend
-                  wrapperStyle={{ fontSize: '10px' }}
-                  formatter={(value) => (
-                    <span className="text-xs text-foreground">{value}</span>
-                  )}
-                />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{
+              backgroundColor: 'hsl(var(--card))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: 'var(--radius)',
+              fontSize: '12px'
+            }} />
+                <Legend wrapperStyle={{
+              fontSize: '10px'
+            }} formatter={value => <span className="text-xs text-foreground">{value}</span>} />
               </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="text-center py-4 text-sm text-muted-foreground">
+            </ResponsiveContainer> : <div className="text-center py-4 text-sm text-muted-foreground">
               Sem dados para exibir
-            </div>
-          )}
+            </div>}
 
           {/* Category list */}
           <div className="space-y-1">
-            {(Object.entries(expensesByCategory) as [ExpenseCategory, number][])
-              .filter(([_, value]) => value > 0)
-              .sort((a, b) => b[1] - a[1])
-              .map(([category, value]) => (
-                <div key={category} className="flex items-center justify-between text-sm">
+            {(Object.entries(expensesByCategory) as [ExpenseCategory, number][]).filter(([_, value]) => value > 0).sort((a, b) => b[1] - a[1]).map(([category, value]) => <div key={category} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
                     <span>{expenseCategoryIcons[category]}</span>
                     <span>{expenseCategoryLabels[category]}</span>
                   </div>
                   <span className="font-medium">{formatCurrency(value)}</span>
-                </div>
-              ))}
+                </div>)}
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
