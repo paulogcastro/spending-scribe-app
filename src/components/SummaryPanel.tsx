@@ -144,7 +144,7 @@ Investido
           {/* Header */}
           <div className="grid grid-cols-4 gap-2 text-xs text-muted-foreground px-1">
             <div></div>
-            <div className="text-right">Meta</div>
+            <div className="text-right">Projetado</div>
             <div className="text-right">Atual</div>
             <div className="text-right">Dif</div>
           </div>
