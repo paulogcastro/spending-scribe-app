@@ -113,7 +113,9 @@ Real </div>
             Investimentos
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span>Meta</span>
+            <span>Meta de
+Investimento
+ </span>
             <span className="font-medium">{formatCurrency(investmentGoal)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
