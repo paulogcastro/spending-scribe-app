@@ -71,7 +71,7 @@ export function FixedExpenseSection({
         <Target className="h-4 w-4 text-muted-foreground" />
         <span className="text-xs text-muted-foreground">Projetado:</span>
         <Input type="number" value={goal || ''} onChange={e => onGoalChange(parseFloat(e.target.value) || 0)} className="h-7 w-24 text-right text-xs" placeholder="0.00" />
-        <span className="text-xs text-muted-foreground ml-2">Atual:</span>
+        <span className="text-xs text-muted-foreground ml-2">Real:</span>
         <span className="text-xs font-medium">{formatCurrency(totalActual)}</span>
         <span className={`text-xs font-medium ml-auto ${difference >= 0 ? 'text-primary' : 'text-destructive'}`}>
           {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
