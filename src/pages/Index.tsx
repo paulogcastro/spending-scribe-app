@@ -16,7 +16,6 @@ const Index = () => {
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
-  const [dailyBudget, setDailyBudget] = useState(0);
 
   const {
     getMonthData,
@@ -204,6 +203,8 @@ const Index = () => {
               />
               <InvestmentSection
                 items={monthData.investments || []}
+                goal={monthData.investmentGoal || 0}
+                onGoalChange={handleInvestmentGoalChange}
                 onAdd={handleAddInvestment}
                 onUpdate={handleUpdateInvestment}
                 onRemove={handleRemoveInvestment}
@@ -216,6 +217,8 @@ const Index = () => {
                 title="Casa"
                 type="casa"
                 items={monthData.casa}
+                goal={monthData.expenseGoals?.casa || 0}
+                onGoalChange={(value) => handleExpenseGoalChange('casa', value)}
                 onAdd={handleAddFixedCasa}
                 onUpdate={handleUpdateFixedCasa}
                 onRemove={handleRemoveFixedCasa}
@@ -224,6 +227,8 @@ const Index = () => {
                 title="Carro"
                 type="carro"
                 items={monthData.carro}
+                goal={monthData.expenseGoals?.carro || 0}
+                onGoalChange={(value) => handleExpenseGoalChange('carro', value)}
                 onAdd={handleAddFixedCarro}
                 onUpdate={handleUpdateFixedCarro}
                 onRemove={handleRemoveFixedCarro}
@@ -233,6 +238,8 @@ const Index = () => {
             {/* Installments */}
             <InstallmentSection
               items={monthData.parcelados}
+              goal={monthData.expenseGoals?.parcelados || 0}
+              onGoalChange={(value) => handleExpenseGoalChange('parcelados', value)}
               onAdd={handleAddInstallment}
               onUpdate={handleUpdateInstallment}
               onRemove={handleRemoveInstallment}
@@ -241,10 +248,10 @@ const Index = () => {
             {/* Daily Expenses */}
             <DailyExpenseSection
               items={monthData.diarias}
-              budgetPlanned={dailyBudget}
+              goal={monthData.expenseGoals?.diarias || 0}
+              onGoalChange={(value) => handleExpenseGoalChange('diarias', value)}
               onAdd={handleAddDaily}
               onRemove={handleRemoveDaily}
-              onBudgetChange={setDailyBudget}
             />
           </div>
 
@@ -254,22 +261,17 @@ const Index = () => {
               <SummaryPanel
                 expensesPlanned={summary.expensesPlanned}
                 expensesActual={summary.expensesActual}
-                casaPlanned={summary.casaPlanned}
                 casaActual={summary.casaActual}
-                carroPlanned={summary.carroPlanned}
                 carroActual={summary.carroActual}
-                parceladosPlanned={summary.parceladosPlanned}
                 parceladosActual={summary.parceladosActual}
                 diariasTotal={summary.diariasTotal}
-                diariasGoal={summary.diariasGoal}
                 incomeActual={summary.incomeActual}
                 investmentsTotal={summary.investmentsTotal}
                 investmentGoal={summary.investmentGoal}
                 result={summary.result}
                 resultAfterInvestment={summary.resultAfterInvestment}
                 expenseGoals={summary.expenseGoals}
-                onInvestmentGoalChange={handleInvestmentGoalChange}
-                onExpenseGoalChange={handleExpenseGoalChange}
+                expensesByCategory={summary.expensesByCategory}
               />
             </div>
           </aside>

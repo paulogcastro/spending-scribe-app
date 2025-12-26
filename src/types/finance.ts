@@ -1,10 +1,48 @@
 // Grupos de despesas baseados na planilha
 export type ExpenseGroup = 'casa' | 'carro' | 'parcelados' | 'diarias';
 
-// Categorias para despesas diárias
+// Categorias gerais para todas as despesas
+export type ExpenseCategory = 
+  | 'casa'
+  | 'carro'
+  | 'alimentacao'
+  | 'ifood'
+  | 'lazer'
+  | 'hobbies'
+  | 'saude'
+  | 'roupa'
+  | 'outros';
+
+export const expenseCategoryLabels: Record<ExpenseCategory, string> = {
+  casa: 'Casa',
+  carro: 'Carro',
+  alimentacao: 'Alimentação',
+  ifood: 'iFood',
+  lazer: 'Lazer',
+  hobbies: 'Hobbies',
+  saude: 'Saúde',
+  roupa: 'Roupa',
+  outros: 'Outros',
+};
+
+export const expenseCategoryIcons: Record<ExpenseCategory, string> = {
+  casa: '🏠',
+  carro: '🚗',
+  alimentacao: '🍽️',
+  ifood: '📱',
+  lazer: '🎬',
+  hobbies: '🎮',
+  saude: '💊',
+  roupa: '👕',
+  outros: '📦',
+};
+
+// Categorias para despesas diárias (subset)
 export type DailyCategory = 
   | 'alimentacao'
+  | 'ifood'
   | 'lazer'
+  | 'hobbies'
   | 'saude'
   | 'carro'
   | 'roupa'
@@ -12,7 +50,9 @@ export type DailyCategory =
 
 export const dailyCategoryLabels: Record<DailyCategory, string> = {
   alimentacao: 'Alimentação',
+  ifood: 'iFood',
   lazer: 'Lazer',
+  hobbies: 'Hobbies',
   saude: 'Saúde',
   carro: 'Carro',
   roupa: 'Roupa',
@@ -21,7 +61,9 @@ export const dailyCategoryLabels: Record<DailyCategory, string> = {
 
 export const dailyCategoryIcons: Record<DailyCategory, string> = {
   alimentacao: '🍽️',
+  ifood: '📱',
   lazer: '🎬',
+  hobbies: '🎮',
   saude: '💊',
   carro: '🚗',
   roupa: '👕',
@@ -32,7 +74,6 @@ export const dailyCategoryIcons: Record<DailyCategory, string> = {
 export interface FixedExpenseItem {
   id: string;
   description: string;
-  planned: number;
   actual: number;
   installments?: string; // Para carro - ex: "1/12"
   note?: string; // Ex: "[Até Mar/26]"
@@ -59,10 +100,10 @@ export const paymentSourceLabels: Record<PaymentSource, string> = {
 export interface InstallmentItem {
   id: string;
   description: string;
-  planned: number;
   actual: number;
   installments?: string; // Ex: "1/12"
   card: CardType;
+  category?: ExpenseCategory;
   isRecurring?: boolean;
   note?: string;
 }

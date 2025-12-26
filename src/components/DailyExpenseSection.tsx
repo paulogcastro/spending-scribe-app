@@ -4,22 +4,22 @@ import { formatCurrency, formatDate } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Receipt } from 'lucide-react';
+import { Plus, Trash2, Receipt, Target } from 'lucide-react';
 
 interface DailyExpenseSectionProps {
   items: DailyExpense[];
-  budgetPlanned: number;
+  goal: number;
+  onGoalChange: (value: number) => void;
   onAdd: (expense: { description: string; amount: number; category: DailyCategory; source: PaymentSource; date: string }) => void;
   onRemove: (id: string) => void;
-  onBudgetChange: (value: number) => void;
 }
 
 export function DailyExpenseSection({ 
   items, 
-  budgetPlanned, 
+  goal,
+  onGoalChange,
   onAdd, 
   onRemove,
-  onBudgetChange 
 }: DailyExpenseSectionProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newItem, setNewItem] = useState({ 
@@ -31,7 +31,7 @@ export function DailyExpenseSection({
   });
 
   const totalActual = items.reduce((sum, item) => sum + item.amount, 0);
-  const difference = budgetPlanned - totalActual;
+  const difference = goal - totalActual;
 
   // Group by category
   const byCategory = items.reduce((acc, item) => {
@@ -62,7 +62,7 @@ export function DailyExpenseSection({
   const sortedItems = [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+    <div className="rounded-xl border border-border p-5 shadow-card bg-red-50 dark:bg-red-950/20">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
@@ -75,21 +75,21 @@ export function DailyExpenseSection({
         </Button>
       </div>
 
-      {/* Budget input */}
-      <div className="flex items-center gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
-        <span className="text-sm text-muted-foreground">Orçamento:</span>
+      {/* Meta input */}
+      <div className="flex items-center gap-2 mb-4 p-2 bg-muted/30 rounded-lg">
+        <Target className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">Meta:</span>
         <Input
           type="number"
-          value={budgetPlanned || ''}
-          onChange={(e) => onBudgetChange(parseFloat(e.target.value) || 0)}
-          className="h-8 w-32 text-right"
+          value={goal || ''}
+          onChange={(e) => onGoalChange(parseFloat(e.target.value) || 0)}
+          className="h-7 w-24 text-right text-xs"
           placeholder="0.00"
         />
-        <span className="text-sm text-muted-foreground">Gasto:</span>
-        <span className="text-sm font-medium">{formatCurrency(totalActual)}</span>
-        <span className="text-sm text-muted-foreground">Restante:</span>
-        <span className={`text-sm font-medium ${difference >= 0 ? 'text-primary' : 'text-destructive'}`}>
-          {formatCurrency(difference)}
+        <span className="text-xs text-muted-foreground ml-2">Gasto:</span>
+        <span className="text-xs font-medium">{formatCurrency(totalActual)}</span>
+        <span className={`text-xs font-medium ml-auto ${difference >= 0 ? 'text-primary' : 'text-destructive'}`}>
+          {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
         </span>
       </div>
 

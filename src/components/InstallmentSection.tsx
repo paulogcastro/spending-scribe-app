@@ -1,51 +1,53 @@
 import { useState } from 'react';
-import { InstallmentItem, CardType, cardTypeLabels } from '@/types/finance';
+import { InstallmentItem, CardType, cardTypeLabels, ExpenseCategory, expenseCategoryLabels, expenseCategoryIcons } from '@/types/finance';
 import { formatCurrency } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, CreditCard } from 'lucide-react';
+import { Plus, Trash2, CreditCard, Target } from 'lucide-react';
 
 interface InstallmentSectionProps {
   items: InstallmentItem[];
+  goal: number;
+  onGoalChange: (value: number) => void;
   onAdd: (item: Omit<InstallmentItem, 'id'>) => void;
   onUpdate: (id: string, updates: Partial<InstallmentItem>) => void;
   onRemove: (id: string) => void;
 }
 
-export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: InstallmentSectionProps) {
+export function InstallmentSection({ items, goal, onGoalChange, onAdd, onUpdate, onRemove }: InstallmentSectionProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newItem, setNewItem] = useState({ 
     description: '', 
-    planned: '',
     actual: '',
     installments: '',
     card: 'cartao_inter' as CardType,
+    category: 'outros' as ExpenseCategory,
     isRecurring: false,
     note: '' 
   });
 
-  const totalPlanned = items.reduce((sum, item) => sum + item.planned, 0);
   const totalActual = items.reduce((sum, item) => sum + item.actual, 0);
+  const difference = goal - totalActual;
 
   const handleAdd = () => {
     if (!newItem.description) return;
     onAdd({
       description: newItem.description,
-      planned: parseFloat(newItem.planned) || 0,
       actual: parseFloat(newItem.actual) || 0,
       installments: newItem.installments || undefined,
       card: newItem.card,
+      category: newItem.category,
       isRecurring: newItem.isRecurring,
       note: newItem.note || undefined,
     });
-    setNewItem({ description: '', planned: '', actual: '', installments: '', card: 'cartao_inter', isRecurring: false, note: '' });
+    setNewItem({ description: '', actual: '', installments: '', card: 'cartao_inter', category: 'outros', isRecurring: false, note: '' });
     setIsAdding(false);
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+    <div className="rounded-xl border border-border p-5 shadow-card bg-red-50 dark:bg-red-950/20">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
@@ -58,24 +60,42 @@ export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: Install
         </Button>
       </div>
 
+      {/* Meta input */}
+      <div className="flex items-center gap-2 mb-4 p-2 bg-muted/30 rounded-lg">
+        <Target className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">Meta:</span>
+        <Input
+          type="number"
+          value={goal || ''}
+          onChange={(e) => onGoalChange(parseFloat(e.target.value) || 0)}
+          className="h-7 w-24 text-right text-xs"
+          placeholder="0.00"
+        />
+        <span className="text-xs text-muted-foreground ml-2">Atual:</span>
+        <span className="text-xs font-medium">{formatCurrency(totalActual)}</span>
+        <span className={`text-xs font-medium ml-auto ${difference >= 0 ? 'text-primary' : 'text-destructive'}`}>
+          {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
+        </span>
+      </div>
+
       <div className="space-y-2">
         {/* Header */}
         <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium px-2">
-          <div className="col-span-3">Descrição</div>
+          <div className="col-span-2">Descrição</div>
           <div className="col-span-1 text-center">Parcelas</div>
-          <div className="col-span-2 text-right">Projetado</div>
           <div className="col-span-2 text-right">Atual</div>
+          <div className="col-span-2 text-center">Categoria</div>
           <div className="col-span-2 text-center">Cartão</div>
-          <div className="col-span-1 text-center">Recor.</div>
+          <div className="col-span-2 text-center">Recor.</div>
           <div className="col-span-1"></div>
         </div>
 
         {/* Items */}
         {items.map((item) => (
           <div key={item.id} className="grid grid-cols-12 gap-2 items-center py-2 px-2 rounded-lg hover:bg-muted/50 group">
-            <div className="col-span-3 text-sm">
-              <span>{item.description}</span>
-              {item.note && <span className="text-xs text-muted-foreground ml-1">{item.note}</span>}
+            <div className="col-span-2 text-sm">
+              <span className="truncate block">{item.description}</span>
+              {item.note && <span className="text-xs text-muted-foreground">{item.note}</span>}
             </div>
             <div className="col-span-1">
               <Input
@@ -89,18 +109,27 @@ export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: Install
             <div className="col-span-2">
               <Input
                 type="number"
-                value={item.planned || ''}
-                onChange={(e) => onUpdate(item.id, { planned: parseFloat(e.target.value) || 0 })}
-                className="h-8 text-right text-sm"
-              />
-            </div>
-            <div className="col-span-2">
-              <Input
-                type="number"
                 value={item.actual || ''}
                 onChange={(e) => onUpdate(item.id, { actual: parseFloat(e.target.value) || 0 })}
                 className="h-8 text-right text-sm"
               />
+            </div>
+            <div className="col-span-2">
+              <Select 
+                value={item.category || 'outros'} 
+                onValueChange={(v) => onUpdate(item.id, { category: v as ExpenseCategory })}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(expenseCategoryLabels) as ExpenseCategory[]).map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {expenseCategoryIcons[cat]} {expenseCategoryLabels[cat]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="col-span-2 text-center text-sm">
               <Select 
@@ -119,7 +148,7 @@ export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: Install
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-1 flex justify-center">
+            <div className="col-span-2 flex justify-center">
               <Checkbox
                 checked={item.isRecurring || false}
                 onCheckedChange={(checked) => onUpdate(item.id, { isRecurring: checked as boolean })}
@@ -156,7 +185,7 @@ export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: Install
                 className="h-9"
               />
             </div>
-            <div className="grid grid-cols-5 gap-2 items-center">
+            <div className="grid grid-cols-6 gap-2 items-center">
               <Input
                 type="text"
                 placeholder="Parcelas (1/12)"
@@ -166,18 +195,26 @@ export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: Install
               />
               <Input
                 type="number"
-                placeholder="Projetado"
-                value={newItem.planned}
-                onChange={(e) => setNewItem({ ...newItem, planned: e.target.value })}
-                className="h-9"
-              />
-              <Input
-                type="number"
-                placeholder="Atual"
+                placeholder="Valor"
                 value={newItem.actual}
                 onChange={(e) => setNewItem({ ...newItem, actual: e.target.value })}
                 className="h-9"
               />
+              <Select 
+                value={newItem.category} 
+                onValueChange={(v) => setNewItem({ ...newItem, category: v as ExpenseCategory })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(expenseCategoryLabels) as ExpenseCategory[]).map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {expenseCategoryIcons[cat]} {expenseCategoryLabels[cat]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select 
                 value={newItem.card} 
                 onValueChange={(v) => setNewItem({ ...newItem, card: v as CardType })}
@@ -221,10 +258,9 @@ export function InstallmentSection({ items, onAdd, onUpdate, onRemove }: Install
         {/* Total */}
         {items.length > 0 && (
           <div className="grid grid-cols-12 gap-2 items-center py-2 px-2 border-t border-border mt-2 font-medium">
-            <div className="col-span-4 text-sm">Total Parcelados</div>
-            <div className="col-span-2 text-right text-sm">{formatCurrency(totalPlanned)}</div>
+            <div className="col-span-3 text-sm">Total Parcelados</div>
             <div className="col-span-2 text-right text-sm text-purple-600">{formatCurrency(totalActual)}</div>
-            <div className="col-span-4"></div>
+            <div className="col-span-7"></div>
           </div>
         )}
       </div>

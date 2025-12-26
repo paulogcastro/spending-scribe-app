@@ -3,10 +3,12 @@ import { InvestmentItem } from '@/types/finance';
 import { formatCurrency } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, PiggyBank } from 'lucide-react';
+import { Plus, Trash2, PiggyBank, Target } from 'lucide-react';
 
 interface InvestmentSectionProps {
   items: InvestmentItem[];
+  goal: number;
+  onGoalChange: (value: number) => void;
   onAdd: (item: Omit<InvestmentItem, 'id'>) => void;
   onRemove: (id: string) => void;
   onUpdate: (id: string, updates: Partial<InvestmentItem>) => void;
@@ -14,6 +16,8 @@ interface InvestmentSectionProps {
 
 export function InvestmentSection({
   items,
+  goal,
+  onGoalChange,
   onAdd,
   onRemove,
   onUpdate
@@ -25,6 +29,7 @@ export function InvestmentSection({
   });
 
   const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+  const difference = totalAmount - goal;
 
   const handleAdd = () => {
     if (!newItem.description) return;
@@ -40,7 +45,7 @@ export function InvestmentSection({
   };
 
   return (
-    <div className="border border-border p-5 shadow-card bg-emerald-50 rounded-md w-1/2">
+    <div className="border border-border p-5 shadow-card bg-purple-50 dark:bg-purple-950/20 rounded-xl flex-1">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
@@ -51,6 +56,24 @@ export function InvestmentSection({
         <Button size="sm" variant="ghost" onClick={() => setIsAdding(true)}>
           <Plus className="h-4 w-4" />
         </Button>
+      </div>
+
+      {/* Meta input */}
+      <div className="flex items-center gap-2 mb-4 p-2 bg-muted/30 rounded-lg">
+        <Target className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">Meta:</span>
+        <Input
+          type="number"
+          value={goal || ''}
+          onChange={(e) => onGoalChange(parseFloat(e.target.value) || 0)}
+          className="h-7 w-24 text-right text-xs"
+          placeholder="0.00"
+        />
+        <span className="text-xs text-muted-foreground ml-2">Investido:</span>
+        <span className="text-xs font-medium text-emerald-600">{formatCurrency(totalAmount)}</span>
+        <span className={`text-xs font-medium ml-auto ${difference >= 0 ? 'text-primary' : 'text-destructive'}`}>
+          {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
+        </span>
       </div>
 
       <div className="space-y-2">
