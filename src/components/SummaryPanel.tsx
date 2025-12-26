@@ -146,7 +146,7 @@ Investido
             <div></div>
             <div className="text-right">Meta</div>
             <div className="text-right">Atual</div>
-            <div className="text-right">Diff</div>
+            <div className="text-right">Dif</div>
           </div>
 
           {/* Casa */}
