@@ -66,7 +66,8 @@ export function SummaryPanel({
             <div className="text-sm font-semibold">{formatCurrency(expensesPlanned)}</div>
           </div>
           <div className="p-3 rounded-lg bg-muted/50">
-            <div className="text-xs text-muted-foreground mb-1">Atual</div>
+            <div className="text-xs text-muted-foreground mb-1">Gasto
+Real </div>
             <div className="text-sm font-semibold">{formatCurrency(expensesActual)}</div>
           </div>
           <div className="p-3 rounded-lg bg-muted/50">
