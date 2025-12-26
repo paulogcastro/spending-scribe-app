@@ -9,6 +9,7 @@ import {
   DailyCategory,
   PaymentSource,
   ExpenseGoals,
+  ExpenseCategory,
 } from '@/types/finance';
 
 const STORAGE_KEY = 'finance-tracker-data';
@@ -233,20 +234,20 @@ export function useFinances() {
   }, [updateMonthData]);
 
   // === CALCULATIONS ===
-  const calculateGroupTotal = useCallback((items: FixedExpenseItem[], type: 'planned' | 'actual'): number => {
-    return items.reduce((sum, item) => sum + item[type], 0);
+  const calculateGroupTotal = useCallback((items: FixedExpenseItem[]): number => {
+    return items.reduce((sum, item) => sum + item.actual, 0);
   }, []);
 
-  const calculateInstallmentsTotal = useCallback((items: InstallmentItem[], type: 'planned' | 'actual'): number => {
-    return items.reduce((sum, item) => sum + item[type], 0);
+  const calculateInstallmentsTotal = useCallback((items: InstallmentItem[]): number => {
+    return items.reduce((sum, item) => sum + item.actual, 0);
   }, []);
 
   const calculateDailyTotal = useCallback((items: DailyExpense[]): number => {
     return items.reduce((sum, item) => sum + item.amount, 0);
   }, []);
 
-  const calculateIncomeTotal = useCallback((items: IncomeItem[], type: 'planned' | 'actual'): number => {
-    return items.reduce((sum, item) => sum + item[type], 0);
+  const calculateIncomeTotal = useCallback((items: IncomeItem[]): number => {
+    return items.reduce((sum, item) => sum + item.actual, 0);
   }, []);
 
   const calculateInvestmentTotal = useCallback((items: InvestmentItem[]): number => {
@@ -256,7 +257,9 @@ export function useFinances() {
   const getDailyByCategory = useCallback((items: DailyExpense[]): Record<DailyCategory, number> => {
     const totals: Record<DailyCategory, number> = {
       alimentacao: 0,
+      ifood: 0,
       lazer: 0,
+      hobbies: 0,
       saude: 0,
       carro: 0,
       roupa: 0,
@@ -268,51 +271,82 @@ export function useFinances() {
     return totals;
   }, []);
 
+  // Calculate expenses by category (combining all sources)
+  const getExpensesByCategory = useCallback((monthData: MonthlyData): Record<ExpenseCategory, number> => {
+    const totals: Record<ExpenseCategory, number> = {
+      casa: 0,
+      carro: 0,
+      alimentacao: 0,
+      ifood: 0,
+      lazer: 0,
+      hobbies: 0,
+      saude: 0,
+      roupa: 0,
+      outros: 0,
+    };
+
+    // Casa expenses have 'casa' category by default
+    monthData.casa.forEach((item) => {
+      totals.casa += item.actual;
+    });
+
+    // Carro expenses have 'carro' category by default
+    monthData.carro.forEach((item) => {
+      totals.carro += item.actual;
+    });
+
+    // Parcelados use their own category
+    monthData.parcelados.forEach((item) => {
+      const cat = item.category || 'outros';
+      totals[cat] += item.actual;
+    });
+
+    // Daily expenses use their own category
+    monthData.diarias.forEach((item) => {
+      totals[item.category] += item.amount;
+    });
+
+    return totals;
+  }, []);
+
   const getMonthSummary = useCallback((year: number, month: number) => {
     const monthData = getMonthData(year, month);
     
-    const incomeActual = calculateIncomeTotal(monthData.income, 'actual');
+    const incomeActual = calculateIncomeTotal(monthData.income);
     
-    const casaPlanned = calculateGroupTotal(monthData.casa, 'planned');
-    const casaActual = calculateGroupTotal(monthData.casa, 'actual');
-    
-    const carroPlanned = calculateGroupTotal(monthData.carro, 'planned');
-    const carroActual = calculateGroupTotal(monthData.carro, 'actual');
-    
-    const parceladosPlanned = calculateInstallmentsTotal(monthData.parcelados, 'planned');
-    const parceladosActual = calculateInstallmentsTotal(monthData.parcelados, 'actual');
-    
+    const casaActual = calculateGroupTotal(monthData.casa);
+    const carroActual = calculateGroupTotal(monthData.carro);
+    const parceladosActual = calculateInstallmentsTotal(monthData.parcelados);
     const diariasTotal = calculateDailyTotal(monthData.diarias);
-    const diariasGoal = monthData.expenseGoals?.diarias || 0;
     
     const investmentsTotal = calculateInvestmentTotal(monthData.investments || []);
     const investmentGoal = monthData.investmentGoal || 0;
     
-    const expensesPlanned = casaPlanned + carroPlanned + parceladosPlanned + diariasGoal;
+    const expenseGoals = monthData.expenseGoals || { casa: 0, carro: 0, parcelados: 0, diarias: 0 };
+    const expensesPlanned = expenseGoals.casa + expenseGoals.carro + expenseGoals.parcelados + expenseGoals.diarias;
     const expensesActual = casaActual + carroActual + parceladosActual + diariasTotal;
     
     const result = incomeActual - expensesActual;
     const resultAfterInvestment = result - investmentGoal;
     
+    const expensesByCategory = getExpensesByCategory(monthData);
+    
     return {
       incomeActual,
       expensesPlanned,
       expensesActual,
-      casaPlanned,
       casaActual,
-      carroPlanned,
       carroActual,
-      parceladosPlanned,
       parceladosActual,
       diariasTotal,
-      diariasGoal,
       investmentsTotal,
       investmentGoal,
       result,
       resultAfterInvestment,
-      expenseGoals: monthData.expenseGoals || { casa: 0, carro: 0, parcelados: 0, diarias: 0 },
+      expenseGoals,
+      expensesByCategory,
     };
-  }, [getMonthData, calculateIncomeTotal, calculateGroupTotal, calculateInstallmentsTotal, calculateDailyTotal, calculateInvestmentTotal]);
+  }, [getMonthData, calculateIncomeTotal, calculateGroupTotal, calculateInstallmentsTotal, calculateDailyTotal, calculateInvestmentTotal, getExpensesByCategory]);
 
   // === COPY FIXED DATA TO NEXT MONTH ===
   const copyToNextMonth = useCallback((year: number, month: number) => {
@@ -372,6 +406,7 @@ export function useFinances() {
     calculateIncomeTotal,
     calculateInvestmentTotal,
     getDailyByCategory,
+    getExpensesByCategory,
     getMonthSummary,
     // Utils
     copyToNextMonth,
