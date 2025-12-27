@@ -11,6 +11,8 @@ export type ExpenseCategory =
   | 'hobbies'
   | 'saude'
   | 'roupa'
+  | 'tiriri'
+  | 'investimento'
   | 'outros';
 
 export const expenseCategoryLabels: Record<ExpenseCategory, string> = {
@@ -22,6 +24,8 @@ export const expenseCategoryLabels: Record<ExpenseCategory, string> = {
   hobbies: 'Hobbies',
   saude: 'Saúde',
   roupa: 'Roupa',
+  tiriri: 'Tiriri',
+  investimento: 'Investimento',
   outros: 'Outros',
 };
 
@@ -34,6 +38,8 @@ export const expenseCategoryIcons: Record<ExpenseCategory, string> = {
   hobbies: '🎮',
   saude: '💊',
   roupa: '👕',
+  tiriri: '🐱',
+  investimento: '💰',
   outros: '📦',
 };
 
@@ -46,6 +52,7 @@ export type DailyCategory =
   | 'saude'
   | 'carro'
   | 'roupa'
+  | 'tiriri'
   | 'outros';
 
 export const dailyCategoryLabels: Record<DailyCategory, string> = {
@@ -56,6 +63,7 @@ export const dailyCategoryLabels: Record<DailyCategory, string> = {
   saude: 'Saúde',
   carro: 'Carro',
   roupa: 'Roupa',
+  tiriri: 'Tiriri',
   outros: 'Outros',
 };
 
@@ -67,6 +75,7 @@ export const dailyCategoryIcons: Record<DailyCategory, string> = {
   saude: '💊',
   carro: '🚗',
   roupa: '👕',
+  tiriri: '🐱',
   outros: '📦',
 };
 
@@ -80,11 +89,12 @@ export interface FixedExpenseItem {
 }
 
 // Tipo de cartão para parcelados
-export type CardType = 'cartao_mae' | 'cartao_inter';
+export type CardType = 'cartao_mae' | 'cartao_inter' | 'mercado_pago';
 
 export const cardTypeLabels: Record<CardType, string> = {
   cartao_mae: 'Cartão Mãe',
   cartao_inter: 'Cartão Inter',
+  mercado_pago: 'Mercado Pago',
 };
 
 // Fonte de pagamento para despesas diárias

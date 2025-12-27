@@ -3,6 +3,7 @@ import { InvestmentItem } from '@/types/finance';
 import { formatCurrency } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Plus, Trash2, PiggyBank, Target } from 'lucide-react';
 
 interface InvestmentSectionProps {
@@ -25,7 +26,7 @@ export function InvestmentSection({
   const [isAdding, setIsAdding] = useState(false);
   const [newItem, setNewItem] = useState({
     description: '',
-    amount: ''
+    amount: 0
   });
 
   const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
@@ -35,11 +36,11 @@ export function InvestmentSection({
     if (!newItem.description) return;
     onAdd({
       description: newItem.description,
-      amount: parseFloat(newItem.amount) || 0,
+      amount: newItem.amount,
     });
     setNewItem({
       description: '',
-      amount: ''
+      amount: 0
     });
     setIsAdding(false);
   };
@@ -59,16 +60,16 @@ export function InvestmentSection({
       </div>
 
       {/* Meta input */}
-      <div className="flex items-center gap-2 mb-4 p-2 bg-muted/30 rounded-lg">
+      <div className="flex items-center gap-2 mb-4 p-2 bg-muted/30 rounded-lg flex-wrap">
         <Target className="h-4 w-4 text-muted-foreground" />
         <span className="text-xs text-muted-foreground">Meta:</span>
-        <Input
-          type="number"
-          value={goal || ''}
-          onChange={(e) => onGoalChange(parseFloat(e.target.value) || 0)}
-          className="h-7 w-24 text-right text-xs"
-          placeholder="0.00"
-        />
+        <div className="w-28">
+          <CurrencyInput
+            value={goal}
+            onChange={onGoalChange}
+            className="h-7 text-xs"
+          />
+        </div>
         <span className="text-xs text-muted-foreground ml-2">Investido:</span>
         <span className="text-xs font-medium text-emerald-600">{formatCurrency(totalAmount)}</span>
         <span className={`text-xs font-medium ml-auto ${difference >= 0 ? 'text-primary' : 'text-destructive'}`}>
@@ -91,11 +92,10 @@ export function InvestmentSection({
               {item.description}
             </div>
             <div className="col-span-4">
-              <Input
-                type="number"
+              <CurrencyInput
                 value={item.amount}
-                onChange={e => onUpdate(item.id, { amount: parseFloat(e.target.value) || 0 })}
-                className="h-8 text-right text-sm"
+                onChange={value => onUpdate(item.id, { amount: value })}
+                className="h-8 text-sm"
               />
             </div>
             <div className="col-span-1 flex justify-end">
@@ -124,12 +124,10 @@ export function InvestmentSection({
               />
             </div>
             <div className="col-span-4">
-              <Input
-                type="number"
-                placeholder="0.00"
+              <CurrencyInput
                 value={newItem.amount}
-                onChange={e => setNewItem({ ...newItem, amount: e.target.value })}
-                className="h-8 text-right text-sm"
+                onChange={value => setNewItem({ ...newItem, amount: value })}
+                className="h-8 text-sm"
               />
             </div>
             <div className="col-span-1 flex gap-1">

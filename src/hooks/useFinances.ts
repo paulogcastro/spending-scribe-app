@@ -263,6 +263,7 @@ export function useFinances() {
       saude: 0,
       carro: 0,
       roupa: 0,
+      tiriri: 0,
       outros: 0,
     };
     items.forEach((item) => {
@@ -282,6 +283,8 @@ export function useFinances() {
       hobbies: 0,
       saude: 0,
       roupa: 0,
+      tiriri: 0,
+      investimento: 0,
       outros: 0,
     };
 

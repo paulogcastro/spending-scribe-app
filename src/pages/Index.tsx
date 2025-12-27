@@ -106,9 +106,13 @@ Gastos
               <InvestmentSection items={monthData.investments || []} goal={monthData.investmentGoal || 0} onGoalChange={handleInvestmentGoalChange} onAdd={handleAddInvestment} onUpdate={handleUpdateInvestment} onRemove={handleRemoveInvestment} />
             </div>
 
-            {/* Fixed Expenses - Casa & Carro */}
+            {/* Fixed Expenses - Casa abaixo de Renda/Investimentos */}
             <div className="grid gap-6 md:grid-cols-2">
               <FixedExpenseSection title="Casa" type="casa" items={monthData.casa} goal={monthData.expenseGoals?.casa || 0} onGoalChange={value => handleExpenseGoalChange('casa', value)} onAdd={handleAddFixedCasa} onUpdate={handleUpdateFixedCasa} onRemove={handleRemoveFixedCasa} />
+            </div>
+
+            {/* Fixed Expenses - Carro abaixo de Casa */}
+            <div className="grid gap-6 md:grid-cols-2">
               <FixedExpenseSection title="Carro" type="carro" items={monthData.carro} goal={monthData.expenseGoals?.carro || 0} onGoalChange={value => handleExpenseGoalChange('carro', value)} onAdd={handleAddFixedCarro} onUpdate={handleUpdateFixedCarro} onRemove={handleRemoveFixedCarro} />
             </div>
 
