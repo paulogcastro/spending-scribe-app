@@ -3,6 +3,7 @@ import { IncomeItem } from '@/types/finance';
 import { formatCurrency } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Plus, Trash2, DollarSign } from 'lucide-react';
 
 interface IncomeSectionProps {
@@ -70,11 +71,10 @@ export function IncomeSection({
               {item.note && <span className="text-xs text-muted-foreground ml-1">{item.note}</span>}
             </div>
             <div className="col-span-4">
-              <Input
-                type="number"
+              <CurrencyInput
                 value={item.actual}
-                onChange={e => onUpdate(item.id, { actual: parseFloat(e.target.value) || 0 })}
-                className="h-8 text-right text-sm"
+                onChange={value => onUpdate(item.id, { actual: value })}
+                className="h-8 text-sm"
               />
             </div>
             <div className="col-span-1 flex justify-end">
@@ -103,12 +103,10 @@ export function IncomeSection({
               />
             </div>
             <div className="col-span-4">
-              <Input
-                type="number"
-                placeholder="0.00"
-                value={newItem.actual}
-                onChange={e => setNewItem({ ...newItem, actual: e.target.value })}
-                className="h-8 text-right text-sm"
+              <CurrencyInput
+                value={parseFloat(newItem.actual) || 0}
+                onChange={value => setNewItem({ ...newItem, actual: value.toString() })}
+                className="h-8 text-sm"
               />
             </div>
             <div className="col-span-1 flex gap-1">
