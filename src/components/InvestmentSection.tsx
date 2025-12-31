@@ -60,22 +60,26 @@ export function InvestmentSection({
       </div>
 
       {/* Meta input */}
-      <div className="flex items-center gap-2 mb-4 p-2 bg-muted/30 rounded-lg">
-        <Target className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-        <span className="text-xs text-muted-foreground">Meta:</span>
-        <div className="w-28 flex-shrink-0">
-          <CurrencyInput
-            value={goal}
-            onChange={onGoalChange}
-            className="h-7 text-xs"
-          />
+      <div className="flex flex-col gap-1 mb-4 p-2 bg-muted/30 rounded-lg">
+        <div className="flex items-center gap-2">
+          <Target className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          <span className="text-xs text-muted-foreground">Meta:</span>
+          <div className="w-24 flex-shrink-0">
+            <CurrencyInput
+              value={goal}
+              onChange={onGoalChange}
+              className="h-7 text-xs"
+            />
+          </div>
+          <span className="text-xs text-muted-foreground ml-auto">Investido:</span>
+          <span className="text-xs font-medium text-emerald-600">{formatCurrency(totalAmount)}</span>
         </div>
-        <span className="text-xs text-muted-foreground">Investido:</span>
-        <span className="text-xs font-medium text-emerald-600">{formatCurrency(totalAmount)}</span>
-        <span className="text-xs text-muted-foreground">Diferença:</span>
-        <span className={`text-xs font-medium ${difference >= 0 ? 'text-primary' : 'text-destructive'}`}>
-          {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
-        </span>
+        <div className="flex items-center justify-end gap-1">
+          <span className="text-xs text-muted-foreground">Diferença:</span>
+          <span className={`text-xs font-medium ${difference >= 0 ? 'text-primary' : 'text-destructive'}`}>
+            {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
+          </span>
+        </div>
       </div>
 
       <div className="space-y-2">
