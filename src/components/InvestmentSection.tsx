@@ -60,19 +60,20 @@ export function InvestmentSection({
       </div>
 
       {/* Meta input */}
-      <div className="flex items-center gap-2 mb-4 p-2 bg-muted/30 rounded-lg flex-wrap">
-        <Target className="h-4 w-4 text-muted-foreground" />
+      <div className="flex items-center gap-2 mb-4 p-2 bg-muted/30 rounded-lg">
+        <Target className="h-4 w-4 text-muted-foreground flex-shrink-0" />
         <span className="text-xs text-muted-foreground">Meta:</span>
-        <div className="w-28">
+        <div className="w-28 flex-shrink-0">
           <CurrencyInput
             value={goal}
             onChange={onGoalChange}
             className="h-7 text-xs"
           />
         </div>
-        <span className="text-xs text-muted-foreground ml-2">Investido:</span>
+        <span className="text-xs text-muted-foreground">Investido:</span>
         <span className="text-xs font-medium text-emerald-600">{formatCurrency(totalAmount)}</span>
-        <span className={`text-xs font-medium ml-auto ${difference >= 0 ? 'text-primary' : 'text-destructive'}`}>
+        <span className="text-xs text-muted-foreground">Diferença:</span>
+        <span className={`text-xs font-medium ${difference >= 0 ? 'text-primary' : 'text-destructive'}`}>
           {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
         </span>
       </div>

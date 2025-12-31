@@ -97,8 +97,8 @@ export function SummaryPanel({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-card">
-      <h3 className="font-semibold mb-4 flex items-center gap-2">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-card h-full max-h-[calc(100vh-200px)] overflow-y-auto">
+      <h3 className="font-semibold mb-4 flex items-center gap-2 sticky top-0 bg-card pb-2">
         <Wallet className="h-4 w-4" />
         Resumo
       </h3>
