@@ -42,7 +42,7 @@ export function IncomeSection({
   };
 
   return (
-    <div className="border border-border p-5 shadow-card bg-green-100 rounded-md w-1/2">
+    <div className="border border-border p-5 shadow-card bg-green-100 rounded-md">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
