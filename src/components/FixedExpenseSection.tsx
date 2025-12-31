@@ -97,7 +97,7 @@ export function FixedExpenseSection({
         <div className={`grid ${isCarro ? 'grid-cols-12' : 'grid-cols-12'} gap-2 text-xs text-muted-foreground font-medium px-2`}>
           <div className={isCarro ? 'col-span-5' : 'col-span-8'}>Descrição</div>
           {isCarro && <div className="col-span-3 text-center">Parcelas</div>}
-          <div className="col-span-3 text-right">Valor</div>
+          <div className="col-span-3 text-right pr-8">Valor</div>
           <div className="col-span-1"></div>
         </div>
 
