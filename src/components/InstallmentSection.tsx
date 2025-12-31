@@ -146,6 +146,7 @@ export function InstallmentSection({
                 value={item.installments || ''}
                 onChange={e => onUpdate(item.id, { installments: e.target.value })}
                 className="h-8 text-center text-xs"
+                disabled={item.isRecurring}
               />
             </div>
             <div className="col-span-2">
@@ -233,6 +234,7 @@ export function InstallmentSection({
                 value={newItem.installments}
                 onChange={e => setNewItem({ ...newItem, installments: e.target.value })}
                 className="h-9"
+                disabled={newItem.isRecurring}
               />
               <Select
                 value={newItem.category}

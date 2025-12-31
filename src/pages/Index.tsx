@@ -101,7 +101,7 @@ Gastos
           {/* Left Column - Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Income & Investments */}
-            <div className="flex gap-6">
+            <div className="grid grid-cols-2 gap-6">
               <IncomeSection items={monthData.income} onAdd={handleAddIncome} onUpdate={handleUpdateIncome} onRemove={handleRemoveIncome} />
               <InvestmentSection items={monthData.investments || []} goal={monthData.investmentGoal || 0} onGoalChange={handleInvestmentGoalChange} onAdd={handleAddInvestment} onUpdate={handleUpdateInvestment} onRemove={handleRemoveInvestment} />
             </div>
