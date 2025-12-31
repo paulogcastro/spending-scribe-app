@@ -185,7 +185,7 @@ export function DailyExpenseSection({
         <div className="col-span-2 text-center">Categoria</div>
         <div className="col-span-2 text-center">Fonte</div>
         <div className="col-span-2 text-center">Data</div>
-        <div className="col-span-2 text-right">Valor</div>
+        <div className="col-span-2 text-right pr-8">Valor</div>
         <div className="col-span-1"></div>
       </div>
 
