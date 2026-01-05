@@ -9,22 +9,24 @@ interface CurrencyInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEle
 export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
   ({ className, value, onChange, ...props }, ref) => {
     const [displayValue, setDisplayValue] = React.useState('');
+    const [isFocused, setIsFocused] = React.useState(false);
 
     React.useEffect(() => {
-      const numValue = typeof value === 'string' ? parseFloat(value) : value;
-      if (!isNaN(numValue) && numValue !== 0) {
-        setDisplayValue(
-          new Intl.NumberFormat('pt-BR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(numValue)
-        );
-      } else if (numValue === 0 && displayValue !== '') {
-        // Keep empty if user cleared
-      } else if (numValue === 0) {
-        setDisplayValue('');
+      // Só formata quando não está focado (edição inicial ou após blur)
+      if (!isFocused) {
+        const numValue = typeof value === 'string' ? parseFloat(value) : value;
+        if (!isNaN(numValue) && numValue !== 0) {
+          setDisplayValue(
+            new Intl.NumberFormat('pt-BR', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(numValue)
+          );
+        } else if (numValue === 0) {
+          setDisplayValue('');
+        }
       }
-    }, [value]);
+    }, [value, isFocused]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       let inputValue = e.target.value;
@@ -50,7 +52,12 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
       onChange(numericValue);
     };
 
+    const handleFocus = () => {
+      setIsFocused(true);
+    };
+
     const handleBlur = () => {
+      setIsFocused(false);
       const numValue = typeof value === 'string' ? parseFloat(value) : value;
       if (!isNaN(numValue) && numValue !== 0) {
         setDisplayValue(
@@ -77,6 +84,7 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
           ref={ref}
           value={displayValue}
           onChange={handleChange}
+          onFocus={handleFocus}
           onBlur={handleBlur}
           placeholder="0,00"
           {...props}
