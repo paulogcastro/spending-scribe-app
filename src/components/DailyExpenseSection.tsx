@@ -6,6 +6,9 @@ import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Receipt, Target } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableItem } from '@/components/ui/sortable-item';
 
 interface DailyExpenseSectionProps {
   items: DailyExpense[];
@@ -18,7 +21,9 @@ interface DailyExpenseSectionProps {
     source: PaymentSource;
     date: string;
   }) => void;
+  onUpdate: (id: string, updates: Partial<DailyExpense>) => void;
   onRemove: (id: string) => void;
+  onReorder: (newOrder: string[]) => void;
 }
 
 export function DailyExpenseSection({
@@ -26,7 +31,9 @@ export function DailyExpenseSection({
   goal,
   onGoalChange,
   onAdd,
-  onRemove
+  onUpdate,
+  onRemove,
+  onReorder
 }: DailyExpenseSectionProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newItem, setNewItem] = useState({
@@ -36,6 +43,14 @@ export function DailyExpenseSection({
     source: 'pix' as PaymentSource,
     date: new Date().toISOString().split('T')[0]
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const totalActual = items.reduce((sum, item) => sum + item.amount, 0);
   const difference = goal - totalActual;
@@ -65,8 +80,15 @@ export function DailyExpenseSection({
     setIsAdding(false);
   };
 
-  // Sort by date descending
-  const sortedItems = [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = items.findIndex(item => item.id === active.id);
+      const newIndex = items.findIndex(item => item.id === over.id);
+      const newItems = arrayMove(items, oldIndex, newIndex);
+      onReorder(newItems.map(item => item.id));
+    }
+  };
 
   return (
     <div className="rounded-xl border border-border p-5 shadow-card bg-red-50 dark:bg-red-950/20">
@@ -180,7 +202,7 @@ export function DailyExpenseSection({
       )}
 
       {/* Header */}
-      <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium px-2 mb-2">
+      <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium px-2 mb-2 pl-8">
         <div className="col-span-3">Descrição</div>
         <div className="col-span-2 text-center">Categoria</div>
         <div className="col-span-2 text-center">Fonte</div>
@@ -191,37 +213,61 @@ export function DailyExpenseSection({
 
       {/* Items list */}
       <div className="space-y-1 max-h-80 overflow-y-auto">
-        {sortedItems.map(item => (
-          <div key={item.id} className="grid grid-cols-12 gap-2 items-center py-2 px-2 rounded-lg hover:bg-muted/50 group">
-            <div className="col-span-3 text-sm font-medium truncate">{item.description}</div>
-            <div className="col-span-2 text-center">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted">
-                {dailyCategoryIcons[item.category]} {dailyCategoryLabels[item.category]}
-              </span>
-            </div>
-            <div className="col-span-2 text-center">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted">
-                {paymentSourceLabels[item.source]}
-              </span>
-            </div>
-            <div className="col-span-2 text-center text-sm text-muted-foreground">
-              {formatDate(item.date)}
-            </div>
-            <div className="col-span-2 text-right text-sm font-medium">
-              {formatCurrency(item.amount)}
-            </div>
-            <div className="col-span-1 flex justify-end">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 opacity-0 group-hover:opacity-100"
-                onClick={() => onRemove(item.id)}
-              >
-                <Trash2 className="h-3 w-3 text-destructive" />
-              </Button>
-            </div>
-          </div>
-        ))}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={items.map(item => item.id)} strategy={verticalListSortingStrategy}>
+            {items.map(item => (
+              <SortableItem key={item.id} id={item.id}>
+                <div className="grid grid-cols-12 gap-2 items-center py-2 px-2 rounded-lg hover:bg-muted/50 group">
+                  <div className="col-span-3">
+                    {editingId === item.id ? (
+                      <Input
+                        value={item.description}
+                        onChange={e => onUpdate(item.id, { description: e.target.value })}
+                        onBlur={() => setEditingId(null)}
+                        onKeyDown={e => e.key === 'Enter' && setEditingId(null)}
+                        className="h-8 text-sm"
+                        autoFocus
+                      />
+                    ) : (
+                      <div 
+                        className="text-sm font-medium truncate cursor-pointer hover:text-primary"
+                        onClick={() => setEditingId(item.id)}
+                      >
+                        {item.description}
+                      </div>
+                    )}
+                  </div>
+                  <div className="col-span-2 text-center">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted">
+                      {dailyCategoryIcons[item.category]} {dailyCategoryLabels[item.category]}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-center">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted">
+                      {paymentSourceLabels[item.source]}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-center text-sm text-muted-foreground">
+                    {formatDate(item.date)}
+                  </div>
+                  <div className="col-span-2 text-right text-sm font-medium">
+                    {formatCurrency(item.amount)}
+                  </div>
+                  <div className="col-span-1 flex justify-end">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                      onClick={() => onRemove(item.id)}
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              </SortableItem>
+            ))}
+          </SortableContext>
+        </DndContext>
       </div>
 
       {items.length === 0 && !isAdding && (
@@ -232,7 +278,7 @@ export function DailyExpenseSection({
 
       {/* Total */}
       {items.length > 0 && (
-        <div className="flex items-center justify-between py-3 px-2 border-t border-border mt-3 font-medium">
+        <div className="flex items-center justify-between py-3 px-2 border-t border-border mt-3 font-medium ml-6">
           <span className="text-sm">Total Despesas Diárias</span>
           <span className="text-sm">{formatCurrency(totalActual)}</span>
         </div>

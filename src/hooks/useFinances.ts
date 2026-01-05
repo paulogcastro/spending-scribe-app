@@ -80,6 +80,23 @@ export function useFinances() {
     });
   }, [saveToStorage]);
 
+  // === REORDER ===
+  const reorderItems = useCallback((
+    year: number, 
+    month: number, 
+    group: 'income' | 'casa' | 'carro' | 'parcelados' | 'diarias' | 'investments',
+    newOrder: string[]
+  ) => {
+    updateMonthData(year, month, (prev) => {
+      const items = [...(prev[group] as { id: string }[])];
+      const reorderedItems = newOrder.map(id => items.find(item => item.id === id)).filter(Boolean);
+      return {
+        ...prev,
+        [group]: reorderedItems,
+      };
+    });
+  }, [updateMonthData]);
+
   // === INCOME ===
   const addIncome = useCallback((year: number, month: number, item: Omit<IncomeItem, 'id'>) => {
     updateMonthData(year, month, (prev) => ({
@@ -223,6 +240,18 @@ export function useFinances() {
     updateMonthData(year, month, (prev) => ({
       ...prev,
       diarias: [newExpense, ...prev.diarias],
+    }));
+  }, [updateMonthData]);
+
+  const updateDailyExpense = useCallback((
+    year: number,
+    month: number,
+    id: string,
+    updates: Partial<DailyExpense>
+  ) => {
+    updateMonthData(year, month, (prev) => ({
+      ...prev,
+      diarias: prev.diarias.map((item) => item.id === id ? { ...item, ...updates } : item),
     }));
   }, [updateMonthData]);
 
@@ -380,6 +409,8 @@ export function useFinances() {
 
   return {
     getMonthData,
+    // Reorder
+    reorderItems,
     // Income
     addIncome,
     updateIncome,
@@ -401,6 +432,7 @@ export function useFinances() {
     removeInstallment,
     // Daily expenses
     addDailyExpense,
+    updateDailyExpense,
     removeDailyExpense,
     // Calculations
     calculateGroupTotal,
