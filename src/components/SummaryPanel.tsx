@@ -24,12 +24,14 @@ const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
   casa: 'hsl(217, 91%, 60%)',
   carro: 'hsl(25, 95%, 53%)',
   alimentacao: 'hsl(158, 64%, 40%)',
-  ifood: 'hsl(340, 82%, 52%)',
+  almoco: 'hsl(140, 60%, 45%)',
+  besteira: 'hsl(340, 82%, 52%)',
   lazer: 'hsl(280, 68%, 60%)',
   hobbies: 'hsl(200, 80%, 50%)',
   saude: 'hsl(120, 60%, 45%)',
   roupa: 'hsl(45, 93%, 47%)',
   tiriri: 'hsl(310, 70%, 55%)',
+  estudos: 'hsl(190, 75%, 50%)',
   investimento: 'hsl(270, 60%, 55%)',
   outros: 'hsl(220, 10%, 50%)'
 };

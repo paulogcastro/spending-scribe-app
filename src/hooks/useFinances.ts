@@ -230,7 +230,7 @@ export function useFinances() {
   const addDailyExpense = useCallback((
     year: number, 
     month: number, 
-    expense: { description: string; amount: number; category: DailyCategory; source: PaymentSource; date: string }
+    expense: { description: string; amount: number; category: DailyCategory; source: PaymentSource; date: string; note?: string }
   ) => {
     const newExpense: DailyExpense = {
       ...expense,
@@ -286,13 +286,15 @@ export function useFinances() {
   const getDailyByCategory = useCallback((items: DailyExpense[]): Record<DailyCategory, number> => {
     const totals: Record<DailyCategory, number> = {
       alimentacao: 0,
-      ifood: 0,
+      almoco: 0,
+      besteira: 0,
       lazer: 0,
       hobbies: 0,
       saude: 0,
       carro: 0,
       roupa: 0,
       tiriri: 0,
+      estudos: 0,
       outros: 0,
     };
     items.forEach((item) => {
@@ -307,12 +309,14 @@ export function useFinances() {
       casa: 0,
       carro: 0,
       alimentacao: 0,
-      ifood: 0,
+      almoco: 0,
+      besteira: 0,
       lazer: 0,
       hobbies: 0,
       saude: 0,
       roupa: 0,
       tiriri: 0,
+      estudos: 0,
       investimento: 0,
       outros: 0,
     };
@@ -392,15 +396,14 @@ export function useFinances() {
     
     updateMonthData(nextYear, nextMonth, (prev) => ({
       ...prev,
-      income: currentData.income.map((item) => ({ ...item, id: crypto.randomUUID(), actual: 0 })),
-      casa: currentData.casa.map((item) => ({ ...item, id: crypto.randomUUID(), actual: 0 })),
-      carro: currentData.carro.map((item) => ({ ...item, id: crypto.randomUUID(), actual: 0 })),
+      income: currentData.income.map((item) => ({ ...item, id: crypto.randomUUID() })),
+      casa: currentData.casa.map((item) => ({ ...item, id: crypto.randomUUID() })),
+      carro: currentData.carro.map((item) => ({ ...item, id: crypto.randomUUID() })),
       parcelados: currentData.parcelados
         .filter((item) => item.isRecurring || (item.installments && item.installments.includes('/')))
         .map((item) => ({ 
           ...item, 
           id: crypto.randomUUID(),
-          actual: 0,
         })),
       investmentGoal: currentData.investmentGoal,
       expenseGoals: currentData.expenseGoals,
