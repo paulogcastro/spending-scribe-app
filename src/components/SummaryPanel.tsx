@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { formatCurrency } from '@/lib/format';
-import { TrendingUp, TrendingDown, Wallet, Home, Car, CreditCard, Receipt, PiggyBank, Target, BarChart3 } from 'lucide-react';
-import { ExpenseGoals, ExpenseCategory, expenseCategoryLabels, expenseCategoryIcons } from '@/types/finance';
+import { TrendingUp, TrendingDown, Wallet, Home, Car, CreditCard, Receipt, PiggyBank, Target, BarChart3, Calendar } from 'lucide-react';
+import { ExpenseGoals, ExpenseCategory, expenseCategoryLabels, expenseCategoryIcons, DailyExpense } from '@/types/finance';
+import { formatDate } from '@/lib/format';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface SummaryPanelProps {
@@ -18,6 +19,7 @@ interface SummaryPanelProps {
   resultAfterInvestment: number;
   expenseGoals: ExpenseGoals;
   expensesByCategory: Record<ExpenseCategory, number>;
+  dailyExpenses: DailyExpense[];
 }
 
 const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
@@ -49,7 +51,8 @@ export function SummaryPanel({
   result,
   resultAfterInvestment,
   expenseGoals,
-  expensesByCategory
+  expensesByCategory,
+  dailyExpenses
 }: SummaryPanelProps) {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   
@@ -77,6 +80,22 @@ export function SummaryPanel({
     
     return data;
   }, [expensesByCategory, investmentsTotal]);
+
+  // Group daily expenses by day for bar chart
+  const dailyByDay = useMemo(() => {
+    const grouped = dailyExpenses.reduce((acc, item) => {
+      const day = item.date;
+      acc[day] = (acc[day] || 0) + item.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, total]) => ({
+        date: formatDate(date),
+        total
+      }));
+  }, [dailyExpenses]);
 
   // Calculate total for percentage
   const totalForPercentage = useMemo(() => {
@@ -313,6 +332,49 @@ export function SummaryPanel({
               })}
           </div>
         </div>
+
+        {/* Daily expenses by day bar chart */}
+        {dailyByDay.length > 0 && (
+          <div className="space-y-3 pt-3 border-t border-border">
+            <div className="text-xs font-medium text-muted-foreground uppercase mb-2 flex items-center gap-2">
+              <Calendar className="h-3 w-3" />
+              Despesas por Dia
+            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={dailyByDay}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 9 }} 
+                  stroke="hsl(var(--muted-foreground))"
+                  angle={-45}
+                  textAnchor="end"
+                  height={50}
+                />
+                <YAxis 
+                  tick={{ fontSize: 9 }} 
+                  stroke="hsl(var(--muted-foreground))"
+                  tickFormatter={(value) => `R$${value}`}
+                  width={50}
+                />
+                <Tooltip 
+                  formatter={(value: number) => [formatCurrency(value), 'Total']}
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)',
+                    fontSize: '12px'
+                  }}
+                />
+                <Bar 
+                  dataKey="total" 
+                  fill="hsl(var(--primary))" 
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
     </div>
   );

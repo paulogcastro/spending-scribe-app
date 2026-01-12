@@ -210,6 +210,7 @@ const Index = () => {
                 resultAfterInvestment={summary.resultAfterInvestment}
                 expenseGoals={summary.expenseGoals}
                 expensesByCategory={summary.expensesByCategory}
+                dailyExpenses={monthData.diarias}
               />
             </div>
           </aside>
