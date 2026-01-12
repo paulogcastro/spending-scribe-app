@@ -6,12 +6,14 @@ export type ExpenseCategory =
   | 'casa'
   | 'carro'
   | 'alimentacao'
-  | 'ifood'
+  | 'almoco'
+  | 'besteira'
   | 'lazer'
   | 'hobbies'
   | 'saude'
   | 'roupa'
   | 'tiriri'
+  | 'estudos'
   | 'investimento'
   | 'outros';
 
@@ -19,12 +21,14 @@ export const expenseCategoryLabels: Record<ExpenseCategory, string> = {
   casa: 'Casa',
   carro: 'Carro',
   alimentacao: 'Alimentação',
-  ifood: 'iFood',
+  almoco: 'Almoço',
+  besteira: 'Besteira',
   lazer: 'Lazer',
   hobbies: 'Hobbies',
   saude: 'Saúde',
   roupa: 'Roupa',
   tiriri: 'Tiriri',
+  estudos: 'Estudos',
   investimento: 'Investimento',
   outros: 'Outros',
 };
@@ -33,12 +37,14 @@ export const expenseCategoryIcons: Record<ExpenseCategory, string> = {
   casa: '🏠',
   carro: '🚗',
   alimentacao: '🍽️',
-  ifood: '📱',
+  almoco: '🍛',
+  besteira: '🍔',
   lazer: '🎬',
   hobbies: '🎮',
   saude: '💊',
   roupa: '👕',
   tiriri: '🐱',
+  estudos: '📚',
   investimento: '💰',
   outros: '📦',
 };
@@ -46,36 +52,42 @@ export const expenseCategoryIcons: Record<ExpenseCategory, string> = {
 // Categorias para despesas diárias (subset)
 export type DailyCategory = 
   | 'alimentacao'
-  | 'ifood'
+  | 'almoco'
+  | 'besteira'
   | 'lazer'
   | 'hobbies'
   | 'saude'
   | 'carro'
   | 'roupa'
   | 'tiriri'
+  | 'estudos'
   | 'outros';
 
 export const dailyCategoryLabels: Record<DailyCategory, string> = {
   alimentacao: 'Alimentação',
-  ifood: 'iFood',
+  almoco: 'Almoço',
+  besteira: 'Besteira',
   lazer: 'Lazer',
   hobbies: 'Hobbies',
   saude: 'Saúde',
   carro: 'Carro',
   roupa: 'Roupa',
   tiriri: 'Tiriri',
+  estudos: 'Estudos',
   outros: 'Outros',
 };
 
 export const dailyCategoryIcons: Record<DailyCategory, string> = {
   alimentacao: '🍽️',
-  ifood: '📱',
+  almoco: '🍛',
+  besteira: '🍔',
   lazer: '🎬',
   hobbies: '🎮',
   saude: '💊',
   carro: '🚗',
   roupa: '👕',
   tiriri: '🐱',
+  estudos: '📚',
   outros: '📦',
 };
 
@@ -134,6 +146,7 @@ export interface DailyExpense {
   source: PaymentSource;
   date: string;
   createdAt: string;
+  note?: string;
 }
 
 // Renda

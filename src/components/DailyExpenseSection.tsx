@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { DailyExpense, DailyCategory, PaymentSource, dailyCategoryLabels, dailyCategoryIcons, paymentSourceLabels } from '@/types/finance';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Plus, Trash2, Receipt, Target } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableItem } from '@/components/ui/sortable-item';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DailyExpenseSectionProps {
   items: DailyExpense[];
@@ -20,6 +21,7 @@ interface DailyExpenseSectionProps {
     category: DailyCategory;
     source: PaymentSource;
     date: string;
+    note?: string;
   }) => void;
   onUpdate: (id: string, updates: Partial<DailyExpense>) => void;
   onRemove: (id: string) => void;
@@ -41,9 +43,11 @@ export function DailyExpenseSection({
     amount: 0,
     category: 'outros' as DailyCategory,
     source: 'pix' as PaymentSource,
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    note: ''
   });
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -61,6 +65,22 @@ export function DailyExpenseSection({
     return acc;
   }, {} as Record<DailyCategory, number>);
 
+  // Group by day for bar chart
+  const byDay = useMemo(() => {
+    const grouped = items.reduce((acc, item) => {
+      const day = item.date;
+      acc[day] = (acc[day] || 0) + item.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, total]) => ({
+        date: formatDate(date),
+        total
+      }));
+  }, [items]);
+
   const handleAdd = () => {
     if (!newItem.description || !newItem.amount) return;
     onAdd({
@@ -68,14 +88,16 @@ export function DailyExpenseSection({
       amount: newItem.amount,
       category: newItem.category,
       source: newItem.source,
-      date: newItem.date
+      date: newItem.date,
+      note: newItem.note || undefined
     });
     setNewItem({
       description: '',
       amount: 0,
       category: 'outros',
       source: 'pix',
-      date: new Date().toISOString().split('T')[0]
+      date: new Date().toISOString().split('T')[0],
+      note: ''
     });
     setIsAdding(false);
   };
@@ -88,6 +110,16 @@ export function DailyExpenseSection({
       const newItems = arrayMove(items, oldIndex, newIndex);
       onReorder(newItems.map(item => item.id));
     }
+  };
+
+  const startEditing = (id: string, field: string) => {
+    setEditingId(id);
+    setEditingField(field);
+  };
+
+  const stopEditing = () => {
+    setEditingId(null);
+    setEditingField(null);
   };
 
   return (
@@ -133,13 +165,14 @@ export function DailyExpenseSection({
               className="h-9"
               autoFocus
             />
-            <CurrencyInput
-              value={newItem.amount}
-              onChange={value => setNewItem({ ...newItem, amount: value })}
+            <Input
+              placeholder="Observação (opcional)"
+              value={newItem.note}
+              onChange={e => setNewItem({ ...newItem, note: e.target.value })}
               className="h-9"
             />
           </div>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             <Select
               value={newItem.category}
               onValueChange={v => setNewItem({ ...newItem, category: v as DailyCategory })}
@@ -176,6 +209,11 @@ export function DailyExpenseSection({
               onChange={e => setNewItem({ ...newItem, date: e.target.value })}
               className="h-9"
             />
+            <CurrencyInput
+              value={newItem.amount}
+              onChange={value => setNewItem({ ...newItem, amount: value })}
+              className="h-9"
+            />
             <div className="flex gap-2">
               <Button variant="ghost" size="sm" className="flex-1" onClick={() => setIsAdding(false)}>
                 Cancelar
@@ -203,12 +241,12 @@ export function DailyExpenseSection({
 
       {/* Header */}
       <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium px-2 mb-2 pl-8">
-        <div className="col-span-3">Descrição</div>
+        <div className="col-span-2">Descrição</div>
         <div className="col-span-2 text-center">Categoria</div>
         <div className="col-span-2 text-center">Fonte</div>
         <div className="col-span-2 text-center">Data</div>
         <div className="col-span-2 text-right pr-8">Valor</div>
-        <div className="col-span-1"></div>
+        <div className="col-span-2"></div>
       </div>
 
       {/* Items list */}
@@ -218,42 +256,96 @@ export function DailyExpenseSection({
             {items.map(item => (
               <SortableItem key={item.id} id={item.id}>
                 <div className="grid grid-cols-12 gap-2 items-center py-2 px-2 rounded-lg hover:bg-muted/50 group">
-                  <div className="col-span-3">
-                    {editingId === item.id ? (
+                  <div className="col-span-2">
+                    {editingId === item.id && editingField === 'description' ? (
                       <Input
                         value={item.description}
                         onChange={e => onUpdate(item.id, { description: e.target.value })}
-                        onBlur={() => setEditingId(null)}
-                        onKeyDown={e => e.key === 'Enter' && setEditingId(null)}
+                        onBlur={stopEditing}
+                        onKeyDown={e => e.key === 'Enter' && stopEditing()}
                         className="h-8 text-sm"
                         autoFocus
                       />
                     ) : (
                       <div 
-                        className="text-sm font-medium truncate cursor-pointer hover:text-primary"
-                        onClick={() => setEditingId(item.id)}
+                        className="text-sm cursor-pointer hover:text-primary"
+                        onClick={() => startEditing(item.id, 'description')}
                       >
-                        {item.description}
+                        <span className="truncate block font-medium">{item.description}</span>
+                        {item.note && <span className="text-xs text-muted-foreground">{item.note}</span>}
                       </div>
                     )}
                   </div>
                   <div className="col-span-2 text-center">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted">
-                      {dailyCategoryIcons[item.category]} {dailyCategoryLabels[item.category]}
-                    </span>
+                    <Select
+                      value={item.category}
+                      onValueChange={v => onUpdate(item.id, { category: v as DailyCategory })}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(dailyCategoryLabels) as DailyCategory[]).map(cat => (
+                          <SelectItem key={cat} value={cat}>
+                            {dailyCategoryIcons[cat]} {dailyCategoryLabels[cat]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="col-span-2 text-center">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted">
-                      {paymentSourceLabels[item.source]}
-                    </span>
+                    <Select
+                      value={item.source}
+                      onValueChange={v => onUpdate(item.id, { source: v as PaymentSource })}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(paymentSourceLabels) as PaymentSource[]).map(source => (
+                          <SelectItem key={source} value={source}>
+                            {paymentSourceLabels[source]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="col-span-2 text-center text-sm text-muted-foreground">
-                    {formatDate(item.date)}
+                  <div className="col-span-2 text-center">
+                    <Input
+                      type="date"
+                      value={item.date}
+                      onChange={e => onUpdate(item.id, { date: e.target.value })}
+                      className="h-8 text-xs"
+                    />
                   </div>
-                  <div className="col-span-2 text-right text-sm font-medium">
-                    {formatCurrency(item.amount)}
+                  <div className="col-span-2">
+                    <CurrencyInput
+                      value={item.amount}
+                      onChange={value => onUpdate(item.id, { amount: value })}
+                      className="h-8 text-sm"
+                    />
                   </div>
-                  <div className="col-span-1 flex justify-end">
+                  <div className="col-span-2 flex justify-end gap-1">
+                    {editingId === item.id && editingField === 'note' ? (
+                      <Input
+                        value={item.note || ''}
+                        onChange={e => onUpdate(item.id, { note: e.target.value })}
+                        onBlur={stopEditing}
+                        onKeyDown={e => e.key === 'Enter' && stopEditing()}
+                        placeholder="Observação"
+                        className="h-7 text-xs"
+                        autoFocus
+                      />
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100"
+                        onClick={() => startEditing(item.id, 'note')}
+                      >
+                        {item.note ? 'Editar obs' : '+ Obs'}
+                      </Button>
+                    )}
                     <Button
                       size="icon"
                       variant="ghost"
@@ -281,6 +373,43 @@ export function DailyExpenseSection({
         <div className="flex items-center justify-between py-3 px-2 border-t border-border mt-3 font-medium ml-6">
           <span className="text-sm">Total Despesas Diárias</span>
           <span className="text-sm">{formatCurrency(totalActual)}</span>
+        </div>
+      )}
+
+      {/* Daily expenses bar chart */}
+      {byDay.length > 0 && (
+        <div className="mt-6 pt-4 border-t border-border">
+          <div className="text-xs font-medium text-muted-foreground uppercase mb-3">
+            Despesas por Dia
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={byDay}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis 
+                dataKey="date" 
+                tick={{ fontSize: 10 }} 
+                stroke="hsl(var(--muted-foreground))"
+              />
+              <YAxis 
+                tick={{ fontSize: 10 }} 
+                stroke="hsl(var(--muted-foreground))"
+                tickFormatter={(value) => `R$${value}`}
+              />
+              <Tooltip 
+                formatter={(value: number) => [formatCurrency(value), 'Total']}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: 'var(--radius)',
+                }}
+              />
+              <Bar 
+                dataKey="total" 
+                fill="hsl(var(--primary))" 
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
     </div>
