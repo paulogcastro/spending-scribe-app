@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { DailyExpense, DailyCategory, PaymentSource, dailyCategoryLabels, dailyCategoryIcons, paymentSourceLabels } from '@/types/finance';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,6 @@ import { Plus, Trash2, Receipt, Target } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableItem } from '@/components/ui/sortable-item';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DailyExpenseSectionProps {
   items: DailyExpense[];
@@ -64,22 +63,6 @@ export function DailyExpenseSection({
     acc[item.category] = (acc[item.category] || 0) + item.amount;
     return acc;
   }, {} as Record<DailyCategory, number>);
-
-  // Group by day for bar chart
-  const byDay = useMemo(() => {
-    const grouped = items.reduce((acc, item) => {
-      const day = item.date;
-      acc[day] = (acc[day] || 0) + item.amount;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(grouped)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, total]) => ({
-        date: formatDate(date),
-        total
-      }));
-  }, [items]);
 
   const handleAdd = () => {
     if (!newItem.description || !newItem.amount) return;
@@ -373,43 +356,6 @@ export function DailyExpenseSection({
         <div className="flex items-center justify-between py-3 px-2 border-t border-border mt-3 font-medium ml-6">
           <span className="text-sm">Total Despesas Diárias</span>
           <span className="text-sm">{formatCurrency(totalActual)}</span>
-        </div>
-      )}
-
-      {/* Daily expenses bar chart */}
-      {byDay.length > 0 && (
-        <div className="mt-6 pt-4 border-t border-border">
-          <div className="text-xs font-medium text-muted-foreground uppercase mb-3">
-            Despesas por Dia
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={byDay}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="date" 
-                tick={{ fontSize: 10 }} 
-                stroke="hsl(var(--muted-foreground))"
-              />
-              <YAxis 
-                tick={{ fontSize: 10 }} 
-                stroke="hsl(var(--muted-foreground))"
-                tickFormatter={(value) => `R$${value}`}
-              />
-              <Tooltip 
-                formatter={(value: number) => [formatCurrency(value), 'Total']}
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: 'var(--radius)',
-                }}
-              />
-              <Bar 
-                dataKey="total" 
-                fill="hsl(var(--primary))" 
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
         </div>
       )}
     </div>
