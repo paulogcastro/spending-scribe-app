@@ -334,7 +334,7 @@ export function SummaryPanel({
                     onMouseLeave={() => setHoveredCategory(null)}
                   >
                     <div className="flex items-center gap-2">
-                      <span>{expenseCategoryIcons[category]}</span>
+                      <span>{category === ('disponivel' as any) ? '💵' : expenseCategoryIcons[category]}</span>
                       <span>{name}</span>
                     </div>
                     <span className="font-medium tabular-nums">
