@@ -100,15 +100,30 @@ export function SummaryPanel({
   // 100% = income for percentage calculation
   const totalForPercentage = incomeActual;
 
+  // Chart data with "Disponível" slice
+  const chartDataFull = useMemo(() => {
+    const usedTotal = chartDataWithInvestments.reduce((sum, item) => sum + item.value, 0);
+    const remaining = Math.max(0, incomeActual - usedTotal);
+    const data = [...chartDataWithInvestments];
+    if (remaining > 0) {
+      data.push({
+        name: 'Disponível',
+        value: remaining,
+        category: 'disponivel' as ExpenseCategory
+      });
+    }
+    return data;
+  }, [chartDataWithInvestments, incomeActual]);
+
   // Custom tooltip showing percentage
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const value = payload[0].value;
-      const percentage = ((value / totalForPercentage) * 100).toFixed(1);
+      const percentage = totalForPercentage > 0 ? ((value / totalForPercentage) * 100).toFixed(1) : '0.0';
       return (
         <div className="bg-card border border-border rounded-md px-3 py-2 text-xs shadow-lg">
           <p className="font-medium">{payload[0].name}</p>
-          <p className="text-muted-foreground">{percentage}%</p>
+          <p className="text-muted-foreground">{formatCurrency(value)} ({percentage}%)</p>
         </div>
       );
     }
