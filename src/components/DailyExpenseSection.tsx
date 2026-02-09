@@ -224,12 +224,12 @@ export function DailyExpenseSection({
 
       {/* Header */}
       <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium px-2 mb-2 pl-8">
-        <div className="col-span-2">Descrição</div>
+        <div className="col-span-3">Descrição</div>
         <div className="col-span-2 text-center">Categoria</div>
         <div className="col-span-2 text-center">Fonte</div>
         <div className="col-span-2 text-center">Data</div>
         <div className="col-span-2 text-right pr-8">Valor</div>
-        <div className="col-span-2"></div>
+        <div className="col-span-1"></div>
       </div>
 
       {/* Items list */}
@@ -239,7 +239,7 @@ export function DailyExpenseSection({
             {items.map(item => (
               <SortableItem key={item.id} id={item.id}>
                 <div className="grid grid-cols-12 gap-2 items-center py-2 px-2 rounded-lg hover:bg-muted/50 group">
-                  <div className="col-span-2">
+                  <div className="col-span-3">
                     {editingId === item.id && editingField === 'description' ? (
                       <Input
                         value={item.description}
@@ -249,13 +249,37 @@ export function DailyExpenseSection({
                         className="h-8 text-sm"
                         autoFocus
                       />
+                    ) : editingId === item.id && editingField === 'note' ? (
+                      <Input
+                        value={item.note || ''}
+                        onChange={e => onUpdate(item.id, { note: e.target.value })}
+                        onBlur={stopEditing}
+                        onKeyDown={e => e.key === 'Enter' && stopEditing()}
+                        placeholder="Observação"
+                        className="h-7 text-xs"
+                        autoFocus
+                      />
                     ) : (
                       <div 
                         className="text-sm cursor-pointer hover:text-primary"
                         onClick={() => startEditing(item.id, 'description')}
                       >
                         <span className="truncate block font-medium">{item.description}</span>
-                        {item.note && <span className="text-xs text-muted-foreground">{item.note}</span>}
+                        {item.note ? (
+                          <span 
+                            className="text-xs text-muted-foreground cursor-pointer hover:underline"
+                            onClick={(e) => { e.stopPropagation(); startEditing(item.id, 'note'); }}
+                          >
+                            {item.note}
+                          </span>
+                        ) : (
+                          <span 
+                            className="text-xs text-muted-foreground/50 cursor-pointer hover:underline opacity-0 group-hover:opacity-100"
+                            onClick={(e) => { e.stopPropagation(); startEditing(item.id, 'note'); }}
+                          >
+                            + Obs
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -308,27 +332,7 @@ export function DailyExpenseSection({
                       className="h-8 text-sm"
                     />
                   </div>
-                  <div className="col-span-2 flex justify-end gap-1">
-                    {editingId === item.id && editingField === 'note' ? (
-                      <Input
-                        value={item.note || ''}
-                        onChange={e => onUpdate(item.id, { note: e.target.value })}
-                        onBlur={stopEditing}
-                        onKeyDown={e => e.key === 'Enter' && stopEditing()}
-                        placeholder="Observação"
-                        className="h-7 text-xs"
-                        autoFocus
-                      />
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100"
-                        onClick={() => startEditing(item.id, 'note')}
-                      >
-                        {item.note ? 'Editar obs' : '+ Obs'}
-                      </Button>
-                    )}
+                  <div className="col-span-1 flex justify-end">
                     <Button
                       size="icon"
                       variant="ghost"

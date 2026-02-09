@@ -97,20 +97,33 @@ export function SummaryPanel({
       }));
   }, [dailyExpenses]);
 
-  // Calculate total for percentage
-  const totalForPercentage = useMemo(() => {
-    return chartDataWithInvestments.reduce((sum, item) => sum + item.value, 0);
-  }, [chartDataWithInvestments]);
+  // 100% = income for percentage calculation
+  const totalForPercentage = incomeActual;
+
+  // Chart data with "Disponível" slice
+  const chartDataFull = useMemo(() => {
+    const usedTotal = chartDataWithInvestments.reduce((sum, item) => sum + item.value, 0);
+    const remaining = Math.max(0, incomeActual - usedTotal);
+    const data = [...chartDataWithInvestments];
+    if (remaining > 0) {
+      data.push({
+        name: 'Disponível',
+        value: remaining,
+        category: 'disponivel' as ExpenseCategory
+      });
+    }
+    return data;
+  }, [chartDataWithInvestments, incomeActual]);
 
   // Custom tooltip showing percentage
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const value = payload[0].value;
-      const percentage = ((value / totalForPercentage) * 100).toFixed(1);
+      const percentage = totalForPercentage > 0 ? ((value / totalForPercentage) * 100).toFixed(1) : '0.0';
       return (
         <div className="bg-card border border-border rounded-md px-3 py-2 text-xs shadow-lg">
           <p className="font-medium">{payload[0].name}</p>
-          <p className="text-muted-foreground">{percentage}%</p>
+          <p className="text-muted-foreground">{formatCurrency(value)} ({percentage}%)</p>
         </div>
       );
     }
@@ -267,15 +280,15 @@ export function SummaryPanel({
         <div className="space-y-3 pt-3 border-t border-border">
           <div className="text-xs font-medium text-muted-foreground uppercase mb-2 flex items-center gap-2">
             <BarChart3 className="h-3 w-3" />
-            Despesas por Categoria
+            Uso do Dinheiro
           </div>
           
           {/* Pie Chart */}
-          {chartDataWithInvestments.length > 0 ? (
+          {chartDataFull.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
-                  data={chartDataWithInvestments}
+                  data={chartDataFull}
                   cx="50%"
                   cy="50%"
                   innerRadius={40}
@@ -283,10 +296,10 @@ export function SummaryPanel({
                   paddingAngle={2}
                   dataKey="value"
                 >
-                  {chartDataWithInvestments.map(entry => (
+                  {chartDataFull.map(entry => (
                     <Cell
                       key={entry.category}
-                      fill={CATEGORY_COLORS[entry.category]}
+                      fill={entry.category === ('disponivel' as any) ? 'hsl(var(--muted))' : (CATEGORY_COLORS[entry.category] || 'hsl(220, 10%, 50%)')}
                       stroke="hsl(var(--background))"
                       strokeWidth={2}
                     />
@@ -307,10 +320,10 @@ export function SummaryPanel({
 
           {/* Category list with percentage on hover */}
           <div className="space-y-1">
-            {chartDataWithInvestments
+            {chartDataFull
               .sort((a, b) => b.value - a.value)
               .map(({ category, value, name }) => {
-                const percentage = ((value / totalForPercentage) * 100).toFixed(1);
+                const percentage = totalForPercentage > 0 ? ((value / totalForPercentage) * 100).toFixed(1) : '0.0';
                 const isHovered = hoveredCategory === category;
                 
                 return (
@@ -321,7 +334,7 @@ export function SummaryPanel({
                     onMouseLeave={() => setHoveredCategory(null)}
                   >
                     <div className="flex items-center gap-2">
-                      <span>{expenseCategoryIcons[category]}</span>
+                      <span>{category === ('disponivel' as any) ? '💵' : expenseCategoryIcons[category]}</span>
                       <span>{name}</span>
                     </div>
                     <span className="font-medium tabular-nums">
