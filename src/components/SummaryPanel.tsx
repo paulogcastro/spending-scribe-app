@@ -320,10 +320,10 @@ export function SummaryPanel({
 
           {/* Category list with percentage on hover */}
           <div className="space-y-1">
-            {chartDataWithInvestments
+            {chartDataFull
               .sort((a, b) => b.value - a.value)
               .map(({ category, value, name }) => {
-                const percentage = ((value / totalForPercentage) * 100).toFixed(1);
+                const percentage = totalForPercentage > 0 ? ((value / totalForPercentage) * 100).toFixed(1) : '0.0';
                 const isHovered = hoveredCategory === category;
                 
                 return (

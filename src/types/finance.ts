@@ -110,12 +110,13 @@ export const cardTypeLabels: Record<CardType, string> = {
 };
 
 // Fonte de pagamento para despesas diárias
-export type PaymentSource = 'inter_credito' | 'pix' | 'neon';
+export type PaymentSource = 'inter_credito' | 'pix' | 'neon' | 'mercado_pago';
 
 export const paymentSourceLabels: Record<PaymentSource, string> = {
   inter_credito: 'Inter Crédito',
   pix: 'Pix',
   neon: 'Neon',
+  mercado_pago: 'Mercado Pago',
 };
 
 // Item parcelado
