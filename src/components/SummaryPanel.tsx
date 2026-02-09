@@ -280,7 +280,7 @@ export function SummaryPanel({
         <div className="space-y-3 pt-3 border-t border-border">
           <div className="text-xs font-medium text-muted-foreground uppercase mb-2 flex items-center gap-2">
             <BarChart3 className="h-3 w-3" />
-            Despesas por Categoria
+            Uso do Dinheiro
           </div>
           
           {/* Pie Chart */}
