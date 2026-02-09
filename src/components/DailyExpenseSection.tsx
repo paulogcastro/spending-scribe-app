@@ -224,12 +224,12 @@ export function DailyExpenseSection({
 
       {/* Header */}
       <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium px-2 mb-2 pl-8">
-        <div className="col-span-2">Descrição</div>
+        <div className="col-span-3">Descrição</div>
         <div className="col-span-2 text-center">Categoria</div>
         <div className="col-span-2 text-center">Fonte</div>
         <div className="col-span-2 text-center">Data</div>
         <div className="col-span-2 text-right pr-8">Valor</div>
-        <div className="col-span-2"></div>
+        <div className="col-span-1"></div>
       </div>
 
       {/* Items list */}
