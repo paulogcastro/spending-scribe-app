@@ -97,10 +97,8 @@ export function SummaryPanel({
       }));
   }, [dailyExpenses]);
 
-  // Calculate total for percentage
-  const totalForPercentage = useMemo(() => {
-    return chartDataWithInvestments.reduce((sum, item) => sum + item.value, 0);
-  }, [chartDataWithInvestments]);
+  // 100% = income for percentage calculation
+  const totalForPercentage = incomeActual;
 
   // Custom tooltip showing percentage
   const CustomTooltip = ({ active, payload }: any) => {
