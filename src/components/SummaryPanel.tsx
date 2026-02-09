@@ -284,11 +284,11 @@ export function SummaryPanel({
           </div>
           
           {/* Pie Chart */}
-          {chartDataWithInvestments.length > 0 ? (
+          {chartDataFull.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
-                  data={chartDataWithInvestments}
+                  data={chartDataFull}
                   cx="50%"
                   cy="50%"
                   innerRadius={40}
@@ -296,10 +296,10 @@ export function SummaryPanel({
                   paddingAngle={2}
                   dataKey="value"
                 >
-                  {chartDataWithInvestments.map(entry => (
+                  {chartDataFull.map(entry => (
                     <Cell
                       key={entry.category}
-                      fill={CATEGORY_COLORS[entry.category]}
+                      fill={entry.category === ('disponivel' as any) ? 'hsl(var(--muted))' : (CATEGORY_COLORS[entry.category] || 'hsl(220, 10%, 50%)')}
                       stroke="hsl(var(--background))"
                       strokeWidth={2}
                     />
