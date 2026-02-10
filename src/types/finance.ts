@@ -101,12 +101,13 @@ export interface FixedExpenseItem {
 }
 
 // Tipo de cartão para parcelados
-export type CardType = 'cartao_mae' | 'cartao_inter' | 'mercado_pago';
+export type CardType = 'cartao_mae' | 'cartao_inter' | 'mercado_pago' | 'pix';
 
 export const cardTypeLabels: Record<CardType, string> = {
   cartao_mae: 'Cartão Mãe',
   cartao_inter: 'Cartão Inter',
   mercado_pago: 'Mercado Pago',
+  pix: 'Pix',
 };
 
 // Fonte de pagamento para despesas diárias
