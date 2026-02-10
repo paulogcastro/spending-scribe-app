@@ -149,7 +149,7 @@ export function InstallmentSection({
           <div className="col-span-2">Descrição</div>
           <div className="col-span-1 text-center">Parcelas</div>
           <div className="col-span-2 text-center">Categoria</div>
-          <div className="col-span-2 text-center">Cartão</div>
+          <div className="col-span-2 text-center">Forma Pagto</div>
           <div className="col-span-2 text-center">Recorrente</div>
           <div className="col-span-2 text-right pr-8">Valor</div>
           <div className="col-span-1"></div>
