@@ -105,7 +105,7 @@ export function InstallmentSection({
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
             <CreditCard className="h-4 w-4 text-purple-500" />
           </div>
-          <h3 className="font-semibold">Parcelados no Cartão</h3>
+          <h3 className="font-semibold">Parcelados / Mensais</h3>
         </div>
         <Button size="sm" variant="ghost" onClick={() => setIsAdding(true)}>
           <Plus className="h-4 w-4" />
