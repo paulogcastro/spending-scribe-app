@@ -149,6 +149,7 @@ export interface DailyExpense {
   date: string;
   createdAt: string;
   note?: string;
+  importKey?: string;
 }
 
 // Renda

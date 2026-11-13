@@ -9,6 +9,7 @@ import { Plus, Trash2, Receipt, Target } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableItem } from '@/components/ui/sortable-item';
+import { ImportStatementDialog } from '@/components/ImportStatementDialog';
 
 interface DailyExpenseSectionProps {
   items: DailyExpense[];
@@ -21,6 +22,7 @@ interface DailyExpenseSectionProps {
     source: PaymentSource;
     date: string;
     note?: string;
+    importKey?: string;
   }) => void;
   onUpdate: (id: string, updates: Partial<DailyExpense>) => void;
   onRemove: (id: string) => void;
@@ -114,9 +116,12 @@ export function DailyExpenseSection({
           </div>
           <h3 className="font-semibold">Despesas Diárias</h3>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => setIsAdding(true)}>
-          <Plus className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <ImportStatementDialog existing={items} onImport={list => list.forEach(onAdd)} />
+          <Button size="sm" variant="ghost" onClick={() => setIsAdding(true)}>
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Meta input */}

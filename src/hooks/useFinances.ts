@@ -230,7 +230,7 @@ export function useFinances() {
   const addDailyExpense = useCallback((
     year: number, 
     month: number, 
-    expense: { description: string; amount: number; category: DailyCategory; source: PaymentSource; date: string; note?: string }
+    expense: { description: string; amount: number; category: DailyCategory; source: PaymentSource; date: string; note?: string; importKey?: string }
   ) => {
     const newExpense: DailyExpense = {
       ...expense,
