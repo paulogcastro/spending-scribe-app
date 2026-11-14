@@ -1,3 +1,4 @@
+import { GoalProgress } from '@/components/GoalProgress';
 import { useState } from 'react';
 import { DailyExpense, DailyCategory, PaymentSource, dailyCategoryLabels, dailyCategoryIcons, paymentSourceLabels } from '@/types/finance';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -38,6 +39,9 @@ export function DailyExpenseSection({
   onRemove,
   onReorder
 }: DailyExpenseSectionProps) {
+  const [query, setQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [isAdding, setIsAdding] = useState(false);
   const [newItem, setNewItem] = useState({
     description: '',
@@ -57,6 +61,11 @@ export function DailyExpenseSection({
     })
   );
 
+  const visibleItems = items.filter(item => {
+    const normalized = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    return normalized(`${item.description} ${item.note || ''}`).includes(normalized(query)) && (categoryFilter === 'all' || item.category === categoryFilter) && (sourceFilter === 'all' || item.source === sourceFilter);
+  });
+  const filtered = query !== '' || categoryFilter !== 'all' || sourceFilter !== 'all';
   const totalActual = items.reduce((sum, item) => sum + item.amount, 0);
   const difference = goal - totalActual;
 
@@ -108,17 +117,17 @@ export function DailyExpenseSection({
   };
 
   return (
-    <div className="rounded-xl border border-border p-5 shadow-card bg-red-50 dark:bg-red-950/20">
+    <div className="rounded-lg border border-border p-5 shadow-card bg-card">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
-            <Receipt className="h-4 w-4 text-amber-500" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-category-food/10">
+            <Receipt className="h-4 w-4 text-category-food" />
           </div>
           <h3 className="font-semibold">Despesas Diárias</h3>
         </div>
         <div className="flex items-center gap-1">
           <ImportStatementDialog existing={items} onImport={list => list.forEach(onAdd)} />
-          <Button size="sm" variant="ghost" onClick={() => setIsAdding(true)}>
+          <Button size="sm" variant="outline" aria-label="Adicionar despesa diária" title="Adicionar despesa diária" onClick={() => setIsAdding(true)}>
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -127,7 +136,7 @@ export function DailyExpenseSection({
       {/* Meta input */}
       <div className="flex items-center gap-2 mb-4 p-2 bg-muted/30 rounded-lg flex-wrap">
         <Target className="h-4 w-4 text-muted-foreground" />
-        <span className="text-xs text-muted-foreground">Projetado:</span>
+        <span className="text-xs text-muted-foreground">Meta:</span>
         <div className="w-28">
           <CurrencyInput
             value={goal}
@@ -141,6 +150,8 @@ export function DailyExpenseSection({
           {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
         </span>
       </div>
+
+      <GoalProgress goal={goal} actual={totalActual} />
 
       {/* Add new item */}
       {isAdding && (
@@ -160,7 +171,7 @@ export function DailyExpenseSection({
               className="h-9"
             />
           </div>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <Select
               value={newItem.category}
               onValueChange={v => setNewItem({ ...newItem, category: v as DailyCategory })}
@@ -227,21 +238,29 @@ export function DailyExpenseSection({
         </div>
       )}
 
+      <div className="grid gap-2 sm:grid-cols-[1fr_180px_180px] mb-4">
+        <Input aria-label="Buscar despesas" placeholder="Buscar descrição ou observação" value={query} onChange={e => setQuery(e.target.value)} />
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}><SelectTrigger aria-label="Filtrar categoria"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas as categorias</SelectItem>{Object.entries(dailyCategoryLabels).map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent></Select>
+        <Select value={sourceFilter} onValueChange={setSourceFilter}><SelectTrigger aria-label="Filtrar fonte"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas as fontes</SelectItem>{Object.entries(paymentSourceLabels).map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent></Select>
+      </div>
+      {filtered && <div className="flex items-center justify-between gap-2 mb-3 text-xs text-muted-foreground"><span>{visibleItems.length} de {items.length} lançamentos · {formatCurrency(visibleItems.reduce((sum, item) => sum + item.amount, 0))}</span><Button size="sm" variant="ghost" onClick={() => { setQuery(''); setCategoryFilter('all'); setSourceFilter('all'); }}>Limpar filtros</Button></div>}
+      {filtered && visibleItems.length === 0 && <p className="text-sm text-muted-foreground py-4">Nenhuma despesa encontrada.</p>}
+      <div className="overflow-x-auto"><div className="min-w-[760px]">
       {/* Header */}
       <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium px-2 mb-2 pl-8">
         <div className="col-span-3">Descrição</div>
         <div className="col-span-2 text-center">Categoria</div>
         <div className="col-span-2 text-center">Fonte</div>
         <div className="col-span-2 text-center">Data</div>
-        <div className="col-span-2 text-right pr-8">Valor</div>
+        <div className="col-span-2 text-right pr-3">Valor</div>
         <div className="col-span-1"></div>
       </div>
 
       {/* Items list */}
       <div className="space-y-1 max-h-80 overflow-y-auto">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={filtered ? undefined : handleDragEnd}>
           <SortableContext items={items.map(item => item.id)} strategy={verticalListSortingStrategy}>
-            {items.map(item => (
+            {visibleItems.map(item => (
               <SortableItem key={item.id} id={item.id}>
                 <div className="grid grid-cols-12 gap-2 items-center py-2 px-2 rounded-lg hover:bg-muted/50 group">
                   <div className="col-span-3">
@@ -279,7 +298,7 @@ export function DailyExpenseSection({
                           </span>
                         ) : (
                           <span 
-                            className="text-xs text-muted-foreground/50 cursor-pointer hover:underline opacity-0 group-hover:opacity-100"
+                            className="text-xs text-muted-foreground/50 cursor-pointer hover:underline opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
                             onClick={(e) => { e.stopPropagation(); startEditing(item.id, 'note'); }}
                           >
                             + Obs
@@ -341,7 +360,7 @@ export function DailyExpenseSection({
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                      className="h-7 w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
                       onClick={() => onRemove(item.id)}
                     >
                       <Trash2 className="h-3 w-3 text-destructive" />
@@ -354,6 +373,7 @@ export function DailyExpenseSection({
         </DndContext>
       </div>
 
+      </div></div>
       {items.length === 0 && !isAdding && (
         <div className="text-center py-8 text-sm text-muted-foreground">
           Nenhuma despesa diária registrada. Clique em + para adicionar.

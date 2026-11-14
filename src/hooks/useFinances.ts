@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { parseBackup, type FinanceBackup } from '@/lib/backup';
 import {
   MonthlyData,
   FixedExpenseItem,
@@ -410,7 +411,29 @@ export function useFinances() {
     }));
   }, [getMonthData, updateMonthData]);
 
+  const exportBackup = useCallback((): FinanceBackup => parseBackup(JSON.stringify({
+    version: 1, exportedAt: new Date().toISOString(), months: data,
+    merchantCategories: JSON.parse(localStorage.getItem('finance-import-categories') || '{}'),
+  })), [data]);
+
+  const restoreBackup = useCallback((backup: FinanceBackup) => {
+    const validated = parseBackup(JSON.stringify(backup));
+    const oldData = localStorage.getItem(STORAGE_KEY);
+    const oldCategories = localStorage.getItem('finance-import-categories');
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(validated.months));
+      localStorage.setItem('finance-import-categories', JSON.stringify(validated.merchantCategories));
+    } catch (error) {
+      if (oldData !== null) localStorage.setItem(STORAGE_KEY, oldData); else localStorage.removeItem(STORAGE_KEY);
+      if (oldCategories !== null) localStorage.setItem('finance-import-categories', oldCategories); else localStorage.removeItem('finance-import-categories');
+      throw error;
+    }
+    setData(validated.months);
+  }, []);
+
   return {
+    exportBackup,
+    restoreBackup,
     getMonthData,
     // Reorder
     reorderItems,

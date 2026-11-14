@@ -65,7 +65,7 @@ export function IncomeSection({
   };
 
   return (
-    <div className="border border-border p-5 shadow-card bg-green-100 rounded-md">
+    <div className="border border-border p-5 shadow-card bg-card rounded-md">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
@@ -73,7 +73,7 @@ export function IncomeSection({
           </div>
           <h3 className="font-semibold">Renda</h3>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => setIsAdding(true)}>
+        <Button size="sm" variant="outline" aria-label="Adicionar renda" onClick={() => setIsAdding(true)}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -123,7 +123,7 @@ export function IncomeSection({
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                      className="h-7 w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
                       onClick={() => onRemove(item.id)}
                     >
                       <Trash2 className="h-3 w-3 text-destructive" />

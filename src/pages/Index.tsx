@@ -11,12 +11,17 @@ import { Wallet, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ExpenseGoals } from '@/types/finance';
+import { BudgetOverview } from '@/components/BudgetOverview';
+import { BackupControls } from '@/components/BackupControls';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const Index = () => {
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
   const {
+    exportBackup,
+    restoreBackup,
     getMonthData,
     reorderItems,
     addIncome,
@@ -84,9 +89,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card sticky top-0 z-10">
+      <header className="border-b border-border bg-card">
         <div className="container py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Wallet className="h-5 w-5" />
@@ -94,11 +99,11 @@ const Index = () => {
               <div>
                 <h1 className="text-xl font-bold">Controle de Gastos</h1>
                 <p className="text-sm text-muted-foreground">
-                  Controle completo das suas finanças
+                  Finanças pessoais
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <MonthSelector
                 year={selectedYear}
                 month={selectedMonth}
@@ -107,21 +112,27 @@ const Index = () => {
                   setSelectedMonth(m);
                 }}
               />
-              <Button variant="outline" size="sm" onClick={handleCopyToNextMonth} className="gap-2">
+              <Button variant="outline" size="sm" onClick={handleCopyToNextMonth} className="gap-2" aria-label="Copiar para próximo mês" title="Copiar para próximo mês">
                 <Copy className="h-4 w-4" />
-                Copiar para próximo mês
+                <span className="hidden sm:inline">Copiar para próximo mês</span>
               </Button>
+              <BackupControls exportBackup={exportBackup} restoreBackup={restoreBackup} />
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container py-6">
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Column - Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+      <main className="container py-6 space-y-6">
+        <BudgetOverview income={summary.incomeActual} expenses={summary.expensesActual} investments={summary.investmentsTotal} expenseGoal={summary.expensesPlanned} dailyGoal={monthData.expenseGoals?.diarias || 0} dailySpent={summary.diariasTotal} year={selectedYear} month={selectedMonth} />
+        <Tabs defaultValue="daily" className="space-y-6">
+          <TabsList className="w-full sm:w-auto h-auto grid grid-cols-3 p-1">
+            <TabsTrigger value="daily" className="text-xs sm:text-sm">Despesas diárias</TabsTrigger>
+            <TabsTrigger value="planning" className="text-xs sm:text-sm">Planejamento</TabsTrigger>
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">Resumo e gráficos</TabsTrigger>
+          </TabsList>
+          <TabsContent value="planning" className="space-y-6">
             {/* Income & Investments */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <IncomeSection
                 items={monthData.income}
                 onAdd={handleAddIncome}
@@ -141,7 +152,7 @@ const Index = () => {
             </div>
 
             {/* Fixed Expenses - Casa */}
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6">
               <FixedExpenseSection
                 title="Casa"
                 type="casa"
@@ -156,7 +167,7 @@ const Index = () => {
             </div>
 
             {/* Fixed Expenses - Carro */}
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6">
               <FixedExpenseSection
                 title="Carro"
                 type="carro"
@@ -181,6 +192,8 @@ const Index = () => {
               onReorder={handleReorderInstallment}
             />
 
+          </TabsContent>
+          <TabsContent value="daily">
             {/* Daily Expenses */}
             <DailyExpenseSection
               items={monthData.diarias}
@@ -191,11 +204,8 @@ const Index = () => {
               onRemove={handleRemoveDaily}
               onReorder={handleReorderDaily}
             />
-          </div>
-
-          {/* Right Column - Summary */}
-          <aside className="space-y-6">
-            <div className="sticky top-24">
+          </TabsContent>
+          <TabsContent value="overview">
               <SummaryPanel
                 expensesPlanned={summary.expensesPlanned}
                 expensesActual={summary.expensesActual}
@@ -212,9 +222,8 @@ const Index = () => {
                 expensesByCategory={summary.expensesByCategory}
                 dailyExpenses={monthData.diarias}
               />
-            </div>
-          </aside>
-        </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

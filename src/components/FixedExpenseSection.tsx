@@ -1,3 +1,4 @@
+import { GoalProgress } from '@/components/GoalProgress';
 import { useState } from 'react';
 import { FixedExpenseItem } from '@/types/finance';
 import { formatCurrency } from '@/lib/format';
@@ -52,8 +53,8 @@ export function FixedExpenseSection({
   const difference = goal - totalActual;
 
   const Icon = type === 'casa' ? Home : Car;
-  const iconColor = type === 'casa' ? 'text-blue-500' : 'text-orange-500';
-  const bgIconColor = type === 'casa' ? 'bg-blue-500/10' : 'bg-orange-500/10';
+  const iconColor = type === 'casa' ? 'text-category-transport' : 'text-category-food';
+  const bgIconColor = type === 'casa' ? 'bg-category-transport/10' : 'bg-category-food/10';
   const isCarro = type === 'carro';
 
   const handleAdd = () => {
@@ -84,7 +85,7 @@ export function FixedExpenseSection({
   };
 
   return (
-    <div className="rounded-xl border border-border p-5 shadow-card bg-red-50 dark:bg-red-950/20 col-span-2">
+    <div className="rounded-lg border border-border p-5 shadow-card bg-card ">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${bgIconColor}`}>
@@ -92,15 +93,15 @@ export function FixedExpenseSection({
           </div>
           <h3 className="font-semibold">{title}</h3>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => setIsAdding(true)}>
+        <Button size="sm" variant="outline" aria-label={`Adicionar despesa de ${title}`} title={`Adicionar despesa de ${title}`} onClick={() => setIsAdding(true)}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Meta input */}
-      <div className="flex items-center gap-2 mb-4 p-2 bg-muted/30 rounded-lg">
+      <div className="flex items-center gap-2 mb-4 p-2 bg-muted/30 rounded-lg flex-wrap">
         <Target className="h-4 w-4 text-muted-foreground" />
-        <span className="text-xs text-muted-foreground">Projetado:</span>
+        <span className="text-xs text-muted-foreground">Meta:</span>
         <div className="w-28">
           <CurrencyInput
             value={goal}
@@ -108,19 +109,21 @@ export function FixedExpenseSection({
             className="h-7 text-xs"
           />
         </div>
-        <span className="text-xs text-muted-foreground ml-2">Real:</span>
+        <span className="text-xs text-muted-foreground ml-2">Gasto:</span>
         <span className="text-xs font-medium">{formatCurrency(totalActual)}</span>
         <span className={`text-xs font-medium ml-auto ${difference >= 0 ? 'text-primary' : 'text-destructive'}`}>
           {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
         </span>
       </div>
 
+      <GoalProgress goal={goal} actual={totalActual} />
+
       <div className="space-y-2">
         {/* Header */}
         <div className={`grid ${isCarro ? 'grid-cols-12' : 'grid-cols-12'} gap-2 text-xs text-muted-foreground font-medium px-2 pl-8`}>
           <div className={isCarro ? 'col-span-5' : 'col-span-8'}>Descrição</div>
           {isCarro && <div className="col-span-3 text-center">Parcelas</div>}
-          <div className="col-span-3 text-right pr-8">Valor</div>
+          <div className="col-span-3 text-right pr-3">Valor</div>
           <div className="col-span-1"></div>
         </div>
 
@@ -172,7 +175,7 @@ export function FixedExpenseSection({
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 shrink-0"
+                      className="h-6 w-6 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 shrink-0"
                       onClick={() => onRemove(item.id)}
                     >
                       <Trash2 className="h-3 w-3 text-destructive" />

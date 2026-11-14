@@ -1,3 +1,4 @@
+import { GoalProgress } from '@/components/GoalProgress';
 import { useState } from 'react';
 import { InvestmentItem } from '@/types/finance';
 import { formatCurrency } from '@/lib/format';
@@ -69,25 +70,25 @@ export function InvestmentSection({
   };
 
   return (
-    <div className="border border-border p-5 shadow-card bg-purple-50 dark:bg-purple-950/20 rounded-xl flex-1">
+    <div className="border border-border p-5 shadow-card bg-card rounded-lg flex-1">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
-            <PiggyBank className="h-4 w-4 text-emerald-600" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-category-entertainment/10">
+            <PiggyBank className="h-4 w-4 text-category-entertainment" />
           </div>
           <h3 className="font-semibold">Investimentos</h3>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => setIsAdding(true)}>
+        <Button size="sm" variant="outline" aria-label="Adicionar investimento" onClick={() => setIsAdding(true)}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Meta input */}
       <div className="flex flex-col gap-1 mb-4 p-2 bg-muted/30 rounded-lg">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Target className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           <span className="text-xs text-muted-foreground">Meta:</span>
-          <div className="w-24 flex-shrink-0">
+          <div className="w-32 flex-shrink-0">
             <CurrencyInput
               value={goal}
               onChange={onGoalChange}
@@ -95,7 +96,7 @@ export function InvestmentSection({
             />
           </div>
           <span className="text-xs text-muted-foreground ml-auto">Investido:</span>
-          <span className="text-xs font-medium text-emerald-600">{formatCurrency(totalAmount)}</span>
+          <span className="text-xs font-medium text-category-entertainment">{formatCurrency(totalAmount)}</span>
         </div>
         <div className="flex items-center justify-end gap-1">
           <span className="text-xs text-muted-foreground">Diferença:</span>
@@ -104,6 +105,8 @@ export function InvestmentSection({
           </span>
         </div>
       </div>
+
+      <GoalProgress goal={goal} actual={totalAmount} investment />
 
       <div className="space-y-2">
         {/* Header */}
@@ -149,7 +152,7 @@ export function InvestmentSection({
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                      className="h-7 w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
                       onClick={() => onRemove(item.id)}
                     >
                       <Trash2 className="h-3 w-3 text-destructive" />
@@ -198,7 +201,7 @@ export function InvestmentSection({
         {items.length > 0 && (
           <div className="grid grid-cols-12 gap-2 items-center py-2 px-2 border-t border-border mt-2 font-medium ml-6">
             <div className="col-span-7 text-sm">Total Investido</div>
-            <div className="col-span-4 text-right text-sm text-emerald-600">{formatCurrency(totalAmount)}</div>
+            <div className="col-span-4 text-right text-sm text-category-entertainment">{formatCurrency(totalAmount)}</div>
             <div className="col-span-1"></div>
           </div>
         )}

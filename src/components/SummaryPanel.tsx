@@ -23,19 +23,13 @@ interface SummaryPanelProps {
 }
 
 const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
-  casa: 'hsl(217, 91%, 60%)',
-  carro: 'hsl(25, 95%, 53%)',
-  alimentacao: 'hsl(158, 64%, 40%)',
-  almoco: 'hsl(140, 60%, 45%)',
-  besteira: 'hsl(340, 82%, 52%)',
-  lazer: 'hsl(280, 68%, 60%)',
-  hobbies: 'hsl(200, 80%, 50%)',
-  saude: 'hsl(120, 60%, 45%)',
-  roupa: 'hsl(45, 93%, 47%)',
-  tiriri: 'hsl(310, 70%, 55%)',
-  estudos: 'hsl(190, 75%, 50%)',
-  investimento: 'hsl(270, 60%, 55%)',
-  outros: 'hsl(220, 10%, 50%)'
+  casa: 'hsl(var(--category-transport))', carro: 'hsl(var(--category-food))',
+  alimentacao: 'hsl(var(--primary))', almoco: 'hsl(var(--category-health))',
+  besteira: 'hsl(var(--category-shopping))', lazer: 'hsl(var(--category-entertainment))',
+  hobbies: 'hsl(var(--category-hobbies))', saude: 'hsl(var(--category-health))',
+  roupa: 'hsl(var(--category-bills))', tiriri: 'hsl(var(--category-tiriri))',
+  estudos: 'hsl(var(--category-studies))', investimento: 'hsl(var(--category-entertainment))',
+  outros: 'hsl(var(--category-other))'
 };
 
 export function SummaryPanel({
@@ -131,26 +125,26 @@ export function SummaryPanel({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-card h-full max-h-[calc(100vh-200px)] overflow-y-auto">
-      <h3 className="font-semibold mb-4 flex items-center gap-2 sticky top-0 bg-card pb-2">
+    <div className="bg-background space-y-4">
+      <h3 className="font-semibold mb-4 flex items-center gap-2 pb-2">
         <Wallet className="h-4 w-4" />
         Resumo
       </h3>
 
-      <div className="space-y-4">
+      <div className="grid gap-6 lg:grid-cols-2 [&>div]:min-w-0">
         {/* Expense summary */}
-        <div className="grid grid-cols-3 gap-4 text-center">
+        <div className="grid grid-cols-3 gap-2 text-center lg:col-span-2">
           <div className="p-3 rounded-lg bg-muted/50">
-            <div className="text-xs text-muted-foreground mb-1">Gasto Projetado</div>
-            <div className="text-sm font-semibold">{formatCurrency(expensesPlanned)}</div>
+            <div className="text-xs text-muted-foreground mb-1">Meta de despesas</div>
+            <div className="text-sm font-semibold break-words">{formatCurrency(expensesPlanned)}</div>
           </div>
           <div className="p-3 rounded-lg bg-muted/50">
-            <div className="text-xs text-muted-foreground mb-1">Gasto Real</div>
-            <div className="text-sm font-semibold">{formatCurrency(expensesActual)}</div>
+            <div className="text-xs text-muted-foreground mb-1">Gasto atual</div>
+            <div className="text-sm font-semibold break-words">{formatCurrency(expensesActual)}</div>
           </div>
           <div className="p-3 rounded-lg bg-muted/50">
             <div className="text-xs text-muted-foreground mb-1">Diferença</div>
-            <div className={`text-sm font-semibold ${expensesPlanned - expensesActual >= 0 ? 'text-primary' : 'text-destructive'}`}>
+            <div className={`text-sm font-semibold break-words ${expensesPlanned - expensesActual >= 0 ? 'text-primary' : 'text-destructive'}`}>
               {formatCurrency(expensesPlanned - expensesActual)}
             </div>
           </div>
@@ -196,12 +190,12 @@ export function SummaryPanel({
           </div>
           <div className="flex items-center justify-between text-sm">
             <span>Investido</span>
-            <span className="font-medium text-purple-400">{formatCurrency(investmentsTotal)}</span>
+            <span className="font-medium text-category-entertainment">{formatCurrency(investmentsTotal)}</span>
           </div>
-          <div className={`p-3 rounded-lg ${isAfterInvestmentPositive ? 'bg-emerald-500/10' : 'bg-destructive/10'}`}>
+          <div className={`p-3 rounded-lg ${isAfterInvestmentPositive ? 'bg-primary/10' : 'bg-destructive/10'}`}>
             <div className="flex items-center justify-between">
-              <span className="text-xs">Resultado - Investido</span>
-              <span className={`text-sm font-bold ${isAfterInvestmentPositive ? 'text-emerald-600' : 'text-destructive'}`}>
+              <span className="text-xs">Resultado - Meta de investimento</span>
+              <span className={`text-sm font-bold ${isAfterInvestmentPositive ? 'text-primary' : 'text-destructive'}`}>
                 {formatCurrency(resultAfterInvestment)}
               </span>
             </div>
@@ -218,7 +212,7 @@ export function SummaryPanel({
           {/* Header */}
           <div className="grid grid-cols-4 gap-2 text-xs text-muted-foreground px-1">
             <div></div>
-            <div className="text-right">Projetado</div>
+            <div className="text-right">Meta</div>
             <div className="text-right">Real</div>
             <div className="text-right">Dif</div>
           </div>
@@ -226,7 +220,7 @@ export function SummaryPanel({
           {/* Casa */}
           <div className="grid grid-cols-4 gap-2 items-center text-sm">
             <div className="flex items-center gap-2">
-              <Home className="h-3 w-3 text-blue-500" />
+              <Home className="h-3 w-3 text-category-transport" />
               <span>Casa</span>
             </div>
             <div className="text-right text-xs">{formatCurrency(expenseGoals.casa)}</div>
@@ -239,7 +233,7 @@ export function SummaryPanel({
           {/* Carro */}
           <div className="grid grid-cols-4 gap-2 items-center text-sm">
             <div className="flex items-center gap-2">
-              <Car className="h-3 w-3 text-orange-500" />
+              <Car className="h-3 w-3 text-category-food" />
               <span>Carro</span>
             </div>
             <div className="text-right text-xs">{formatCurrency(expenseGoals.carro)}</div>
@@ -252,7 +246,7 @@ export function SummaryPanel({
           {/* Parcelados */}
           <div className="grid grid-cols-4 gap-2 items-center text-sm">
             <div className="flex items-center gap-2">
-              <CreditCard className="h-3 w-3 text-purple-500" />
+              <CreditCard className="h-3 w-3 text-category-entertainment" />
               <span>Parcelados</span>
             </div>
             <div className="text-right text-xs">{formatCurrency(expenseGoals.parcelados)}</div>
@@ -265,7 +259,7 @@ export function SummaryPanel({
           {/* Diárias */}
           <div className="grid grid-cols-4 gap-2 items-center text-sm">
             <div className="flex items-center gap-2">
-              <Receipt className="h-3 w-3 text-amber-500" />
+              <Receipt className="h-3 w-3 text-category-food" />
               <span>Diárias</span>
             </div>
             <div className="text-right text-xs">{formatCurrency(expenseGoals.diarias)}</div>
@@ -277,7 +271,7 @@ export function SummaryPanel({
         </div>
 
         {/* Breakdown by Category */}
-        <div className="space-y-3 pt-3 border-t border-border">
+        <div className="space-y-3 pt-3 border-t border-border lg:col-span-2">
           <div className="text-xs font-medium text-muted-foreground uppercase mb-2 flex items-center gap-2">
             <BarChart3 className="h-3 w-3" />
             Uso do Dinheiro
@@ -299,7 +293,7 @@ export function SummaryPanel({
                   {chartDataFull.map(entry => (
                     <Cell
                       key={entry.category}
-                      fill={entry.category === ('disponivel' as any) ? 'hsl(var(--muted))' : (CATEGORY_COLORS[entry.category] || 'hsl(220, 10%, 50%)')}
+                      fill={entry.category === ('disponivel' as any) ? 'hsl(var(--muted))' : (CATEGORY_COLORS[entry.category] || 'hsl(var(--category-other))')}
                       stroke="hsl(var(--background))"
                       strokeWidth={2}
                     />
@@ -320,7 +314,7 @@ export function SummaryPanel({
 
           {/* Category list with percentage on hover */}
           <div className="space-y-1">
-            {chartDataFull
+            {[...chartDataFull]
               .sort((a, b) => b.value - a.value)
               .map(({ category, value, name }) => {
                 const percentage = totalForPercentage > 0 ? ((value / totalForPercentage) * 100).toFixed(1) : '0.0';
@@ -348,7 +342,7 @@ export function SummaryPanel({
 
         {/* Daily expenses by day bar chart */}
         {dailyByDay.length > 0 && (
-          <div className="space-y-3 pt-3 border-t border-border">
+          <div className="space-y-3 pt-3 border-t border-border lg:col-span-2">
             <div className="text-xs font-medium text-muted-foreground uppercase mb-2 flex items-center gap-2">
               <Calendar className="h-3 w-3" />
               Despesas por Dia
