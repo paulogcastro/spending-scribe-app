@@ -1,6 +1,8 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useFinances } from '@/hooks/useFinances';
-import { MonthSelector } from '@/components/MonthSelector';
+import { useFinancialCycles } from '@/hooks/useFinancialCycles';
+import { CycleSelector } from '@/components/CycleSelector';
+import { cycleStartDate, legacyMonthForCycle } from '@/lib/financialCycles';
 import { IncomeSection } from '@/components/IncomeSection';
 import { InvestmentSection } from '@/components/InvestmentSection';
 import { FixedExpenseSection } from '@/components/FixedExpenseSection';
@@ -16,9 +18,9 @@ import { BackupControls } from '@/components/BackupControls';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const Index = () => {
-  const now = new Date();
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  const { cycle, navigate } = useFinancialCycles();
+  const { year: selectedYear, month: selectedMonth } = legacyMonthForCycle(cycle.id);
+  const legacyMonthLabel = cycleStartDate(cycle.id).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   const {
     exportBackup,
     restoreBackup,
@@ -104,14 +106,7 @@ const Index = () => {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <MonthSelector
-                year={selectedYear}
-                month={selectedMonth}
-                onChange={(y, m) => {
-                  setSelectedYear(y);
-                  setSelectedMonth(m);
-                }}
-              />
+              <CycleSelector cycle={cycle} onNavigate={navigate} />
               <Button variant="outline" size="sm" onClick={handleCopyToNextMonth} className="gap-2" aria-label="Copiar para próximo mês" title="Copiar para próximo mês">
                 <Copy className="h-4 w-4" />
                 <span className="hidden sm:inline">Copiar para próximo mês</span>
@@ -123,6 +118,7 @@ const Index = () => {
       </header>
 
       <main className="container py-6 space-y-6">
+        <h2 className="text-sm font-medium text-muted-foreground">Registros mensais — {legacyMonthLabel}</h2>
         <BudgetOverview income={summary.incomeActual} expenses={summary.expensesActual} investments={summary.investmentsTotal} expenseGoal={summary.expensesPlanned} dailyGoal={monthData.expenseGoals?.diarias || 0} dailySpent={summary.diariasTotal} year={selectedYear} month={selectedMonth} />
         <Tabs defaultValue="daily" className="space-y-6">
           <TabsList className="w-full sm:w-auto h-auto grid grid-cols-3 p-1">

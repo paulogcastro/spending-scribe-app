@@ -187,6 +187,19 @@ export interface FinanceState {
   months: Record<string, MonthlyData>;
 }
 
+// Cycle metadata is deliberately separate from legacy monthly financial data.
+export interface FinancialCycle {
+  id: string; // Local start date, YYYY-MM-DD
+  startDate: string; // Inclusive
+  endDate: string; // Exclusive: the next day-4 boundary
+}
+
+export interface FinancialCycleState {
+  version: 1;
+  selectedCycleId: string;
+  cycles: Record<string, FinancialCycle>;
+}
+
 // Helpers para cálculos
 export function calculateDifference(planned: number, actual: number): number {
   return planned - actual;
