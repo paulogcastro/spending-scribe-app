@@ -56,7 +56,7 @@ export function parseCycleState(text: string): FinancialCycleState {
     if (!stored || stored.id !== id || stored.startDate !== expected.startDate || stored.endDate !== expected.endDate) throw new Error('Datas de ciclo inválidas.');
     cycles[id] = expected;
   }
-  if (!Object.hasOwn(cycles, value.selectedCycleId)) throw new Error('Ciclo selecionado não encontrado.');
+  if (!Object.prototype.hasOwnProperty.call(cycles, value.selectedCycleId)) throw new Error('Ciclo selecionado não encontrado.');
   return { version: 1, selectedCycleId: value.selectedCycleId, cycles };
 }
 
