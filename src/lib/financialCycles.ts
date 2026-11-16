@@ -74,6 +74,15 @@ export function saveCycleState(storage: CycleStorage, state: FinancialCycleState
   storage.setItem(CYCLE_STORAGE_KEY, JSON.stringify(validated));
 }
 
+// Display only: endDate is the exclusive limit (day 04 of the next month),
+// so the interface shows the previous civil day — the last effective day.
+export function cycleDisplayEndDate(id: string): string {
+  const end = cycleStartDate(id);
+  end.setMonth(end.getMonth() + 1);
+  end.setDate(end.getDate() - 1);
+  return localDateString(end);
+}
+
 // Temporary bridge only: financial modules still use the calendar month of
 // the cycle's start. It does not copy or classify historical entries as cycles.
 export function legacyMonthForCycle(id: string): { year: number; month: number } {

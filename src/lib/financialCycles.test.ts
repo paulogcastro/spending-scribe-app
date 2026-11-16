@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCycle, CLOSING_REFERENCE_DAY, CYCLE_STORAGE_KEY, createFinancialCycle, getFinancialCycle, legacyMonthForCycle, loadCycleState, parseCycleState, saveCycleState, selectFinancialCycle } from './financialCycles';
+import { adjacentCycle, CLOSING_REFERENCE_DAY, CYCLE_STORAGE_KEY, createFinancialCycle, cycleDisplayEndDate, getFinancialCycle, legacyMonthForCycle, loadCycleState, parseCycleState, saveCycleState, selectFinancialCycle } from './financialCycles';
 
 test('days 1–3 belong to the preceding cycle and day 4 starts the next', () => {
   for (const day of [1, 2, 3]) assert.equal(getFinancialCycle(new Date(2026, 10, day)).id, '2026-10-04');
@@ -62,6 +62,24 @@ test('invalid metadata cannot be loaded as valid cycles', () => {
   assert.throws(() => getFinancialCycle(new Date(NaN)));
   assert.throws(() => parseCycleState('{}'));
   assert.throws(() => parseCycleState(JSON.stringify({ version: 1, selectedCycleId: '2026-11-04', cycles: { '2026-11-04': { id: '2026-11-04', startDate: '2026-11-04', endDate: '2026-12-05' } } })));
+});
+
+test('the displayed end date is the last effective day, one before the exclusive limit', () => {
+  assert.equal(cycleDisplayEndDate('2026-11-04'), '2026-12-03');
+  assert.equal(cycleDisplayEndDate('2026-12-04'), '2027-01-03');
+  assert.equal(cycleDisplayEndDate('2026-01-04'), '2026-02-03');
+  assert.equal(cycleDisplayEndDate('2026-02-04'), '2026-03-03');
+  assert.equal(cycleDisplayEndDate('2028-02-04'), '2028-03-03');
+  assert.equal(cycleDisplayEndDate('2026-04-04'), '2026-05-03');
+});
+
+test('displaying the end date never changes the internal exclusive limit', () => {
+  for (const id of ['2026-11-04', '2026-12-04', '2026-02-04', '2028-02-04']) {
+    const cycle = createFinancialCycle(id);
+    cycleDisplayEndDate(id);
+    assert.deepEqual(createFinancialCycle(id), cycle);
+    assert.equal(cycle.endDate, adjacentCycle(id, 1).startDate);
+  }
 });
 
 test('compatibility points to the start calendar month without migrating records', () => {

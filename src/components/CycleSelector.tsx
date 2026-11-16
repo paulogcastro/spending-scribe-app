@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getFinancialCycle } from '@/lib/financialCycles';
+import { cycleDisplayEndDate, getFinancialCycle } from '@/lib/financialCycles';
 import type { FinancialCycle } from '@/types/finance';
 
 const displayDate = (date: string) => date.split('-').reverse().join('/');
@@ -14,7 +14,7 @@ export function CycleSelector({ cycle, onNavigate }: { cycle: FinancialCycle; on
       </Button>
       <div className="min-w-[205px] text-center" aria-live="polite">
         <div className="text-xs text-muted-foreground">{isCurrent ? 'Ciclo atual' : 'Ciclo financeiro'}</div>
-        <div className="text-sm font-medium tabular-nums">{displayDate(cycle.startDate)} a {displayDate(cycle.endDate)}</div>
+        <div className="text-sm font-medium tabular-nums">{displayDate(cycle.startDate)} a {displayDate(cycleDisplayEndDate(cycle.id))}</div>
       </div>
       <Button variant="ghost" size="icon" aria-label="Próximo ciclo" title="Próximo ciclo" onClick={() => onNavigate(1)}>
         <ChevronRight className="h-4 w-4" />

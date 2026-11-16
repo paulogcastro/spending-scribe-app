@@ -118,7 +118,7 @@ const Index = () => {
       </header>
 
       <main className="container py-6 space-y-6">
-        <h2 className="text-sm font-medium text-muted-foreground">Registros mensais — {legacyMonthLabel}</h2>
+        <h2 className="text-sm font-medium text-muted-foreground">Registros do ciclo — {legacyMonthLabel}</h2>
         <BudgetOverview income={summary.incomeActual} expenses={summary.expensesActual} investments={summary.investmentsTotal} expenseGoal={summary.expensesPlanned} dailyGoal={monthData.expenseGoals?.diarias || 0} dailySpent={summary.diariasTotal} year={selectedYear} month={selectedMonth} />
         <Tabs defaultValue="daily" className="space-y-6">
           <TabsList className="w-full sm:w-auto h-auto grid grid-cols-3 p-1">
