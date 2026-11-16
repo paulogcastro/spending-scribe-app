@@ -187,6 +187,30 @@ export interface FinanceState {
   months: Record<string, MonthlyData>;
 }
 
+// Planejamento por ciclo (Bloco 2): estrutura própria, separada do MonthlyData legado.
+export interface ExtraIncome {
+  id: string;
+  description: string;
+  amount: number;
+}
+
+// Grupos com percentual editável; Gastos diários é sempre o residual.
+export type BudgetGroup = 'carro' | 'casa' | 'fixos' | 'parcelados';
+
+export interface CyclePlanning {
+  cycleId: string; // Mesmo identificador do FinancialCycle (YYYY-MM-DD, dia 04)
+  plannedSalary: number; // Salário CLT planejado
+  receivedSalary: number; // Salário efetivamente recebido (realização, nunca copiada)
+  extraIncomes: ExtraIncome[]; // Rendas extras: 100% destinadas ao acréscimo de investimento
+  investmentBaseGoal: number; // Meta-base de investimento (0..plannedSalary)
+  distribution: Record<BudgetGroup, number>; // Percentuais 0–100
+}
+
+export interface CyclePlanningState {
+  version: 1;
+  plans: Record<string, CyclePlanning>;
+}
+
 // Cycle metadata is deliberately separate from legacy monthly financial data.
 export interface FinancialCycle {
   id: string; // Local start date, YYYY-MM-DD
