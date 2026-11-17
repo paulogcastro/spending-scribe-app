@@ -2,6 +2,7 @@ import { useMemo, useCallback } from 'react';
 import { useFinances } from '@/hooks/useFinances';
 import { useFinancialCycles } from '@/hooks/useFinancialCycles';
 import { CycleSelector } from '@/components/CycleSelector';
+import { CyclePlanningSection } from '@/components/CyclePlanningSection';
 import { cycleStartDate, legacyMonthForCycle } from '@/lib/financialCycles';
 import { IncomeSection } from '@/components/IncomeSection';
 import { InvestmentSection } from '@/components/InvestmentSection';
@@ -127,6 +128,9 @@ const Index = () => {
             <TabsTrigger value="overview" className="text-xs sm:text-sm">Resumo e gráficos</TabsTrigger>
           </TabsList>
           <TabsContent value="planning" className="space-y-6">
+            {/* Cycle-based planning (Bloco 2): independente do armazenamento mensal legado */}
+            <CyclePlanningSection cycleId={cycle.id} />
+
             {/* Income & Investments */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <IncomeSection

@@ -10,3 +10,9 @@
 - [x] Persistir ciclos e seleção em chave independente, sem migrar histórico.
 - [x] Preservar os módulos mensais por compatibilidade documentada.
 - [x] Testar datas, persistência, preservação e navegação na aplicação.
+
+# Renda e planejamento por ciclo (Bloco 2)
+- [x] Planejamento versionado por cycleId em chave própria, sem tocar no legado mensal.
+- [x] Salário planejado/recebido e rendas extras com acréscimo automático na meta de investimento.
+- [x] Meta principal de despesas e distribuição em cinco submetas com residual em Gastos diários.
+- [x] Cópia de configurações do ciclo anterior sem realizações, e testes das regras.
