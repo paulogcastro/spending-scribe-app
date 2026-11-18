@@ -4,7 +4,7 @@ import { useFinancialCycles } from '@/hooks/useFinancialCycles';
 import { CycleSelector } from '@/components/CycleSelector';
 import { CyclePlanningSection } from '@/components/CyclePlanningSection';
 import { cycleStartDate, legacyMonthForCycle } from '@/lib/financialCycles';
-import { IncomeSection } from '@/components/IncomeSection';
+import { useCyclePlanning } from '@/hooks/useCyclePlanning';
 import { InvestmentSection } from '@/components/InvestmentSection';
 import { FixedExpenseSection } from '@/components/FixedExpenseSection';
 import { InstallmentSection } from '@/components/InstallmentSection';
@@ -21,19 +21,17 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 const Index = () => {
   const { cycle, navigate } = useFinancialCycles();
   const { year: selectedYear, month: selectedMonth } = legacyMonthForCycle(cycle.id);
+  const cyclePlanning = useCyclePlanning(cycle.id);
+  const cycleInvestmentGoal = cyclePlanning.derived.totalInvestmentGoal;
   const legacyMonthLabel = cycleStartDate(cycle.id).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   const {
     exportBackup,
     restoreBackup,
     getMonthData,
     reorderItems,
-    addIncome,
-    updateIncome,
-    removeIncome,
     addInvestment,
     updateInvestment,
     removeInvestment,
-    setInvestmentGoal,
     setExpenseGoal,
     addFixedExpense,
     updateFixedExpense,
@@ -52,17 +50,12 @@ const Index = () => {
   const summary = useMemo(() => getMonthSummary(selectedYear, selectedMonth), [getMonthSummary, selectedYear, selectedMonth]);
 
   // Handlers com year/month encapsulados
-  const handleAddIncome = useCallback((item: Parameters<typeof addIncome>[2]) => addIncome(selectedYear, selectedMonth, item), [addIncome, selectedYear, selectedMonth]);
-  const handleUpdateIncome = useCallback((id: string, updates: Parameters<typeof updateIncome>[3]) => updateIncome(selectedYear, selectedMonth, id, updates), [updateIncome, selectedYear, selectedMonth]);
-  const handleRemoveIncome = useCallback((id: string) => removeIncome(selectedYear, selectedMonth, id), [removeIncome, selectedYear, selectedMonth]);
-  const handleReorderIncome = useCallback((newOrder: string[]) => reorderItems(selectedYear, selectedMonth, 'income', newOrder), [reorderItems, selectedYear, selectedMonth]);
 
   const handleAddInvestment = useCallback((item: Parameters<typeof addInvestment>[2]) => addInvestment(selectedYear, selectedMonth, item), [addInvestment, selectedYear, selectedMonth]);
   const handleUpdateInvestment = useCallback((id: string, updates: Parameters<typeof updateInvestment>[3]) => updateInvestment(selectedYear, selectedMonth, id, updates), [updateInvestment, selectedYear, selectedMonth]);
   const handleRemoveInvestment = useCallback((id: string) => removeInvestment(selectedYear, selectedMonth, id), [removeInvestment, selectedYear, selectedMonth]);
   const handleReorderInvestment = useCallback((newOrder: string[]) => reorderItems(selectedYear, selectedMonth, 'investments', newOrder), [reorderItems, selectedYear, selectedMonth]);
 
-  const handleInvestmentGoalChange = useCallback((value: number) => setInvestmentGoal(selectedYear, selectedMonth, value), [setInvestmentGoal, selectedYear, selectedMonth]);
   const handleExpenseGoalChange = useCallback((group: keyof ExpenseGoals, value: number) => setExpenseGoal(selectedYear, selectedMonth, group, value), [setExpenseGoal, selectedYear, selectedMonth]);
 
   const handleAddFixedCasa = useCallback((item: Parameters<typeof addFixedExpense>[3]) => addFixedExpense(selectedYear, selectedMonth, 'casa', item), [addFixedExpense, selectedYear, selectedMonth]);
@@ -129,21 +122,13 @@ const Index = () => {
           </TabsList>
           <TabsContent value="planning" className="space-y-6">
             {/* Cycle-based planning (Bloco 2): independente do armazenamento mensal legado */}
-            <CyclePlanningSection cycleId={cycle.id} />
+            <CyclePlanningSection cycleId={cycle.id} cyclePlanning={cyclePlanning} />
 
             {/* Income & Investments */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <IncomeSection
-                items={monthData.income}
-                onAdd={handleAddIncome}
-                onUpdate={handleUpdateIncome}
-                onRemove={handleRemoveIncome}
-                onReorder={handleReorderIncome}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-testid="legacy-investments">
               <InvestmentSection
                 items={monthData.investments || []}
-                goal={monthData.investmentGoal || 0}
-                onGoalChange={handleInvestmentGoalChange}
+                goal={cycleInvestmentGoal}
                 onAdd={handleAddInvestment}
                 onUpdate={handleUpdateInvestment}
                 onRemove={handleRemoveInvestment}
@@ -215,9 +200,9 @@ const Index = () => {
                 diariasTotal={summary.diariasTotal}
                 incomeActual={summary.incomeActual}
                 investmentsTotal={summary.investmentsTotal}
-                investmentGoal={summary.investmentGoal}
+                investmentGoal={cycleInvestmentGoal}
                 result={summary.result}
-                resultAfterInvestment={summary.resultAfterInvestment}
+                resultAfterInvestment={summary.result - cycleInvestmentGoal}
                 expenseGoals={summary.expenseGoals}
                 expensesByCategory={summary.expensesByCategory}
                 dailyExpenses={monthData.diarias}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Wallet, PiggyBank, Target, Plus, Trash2, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,8 +8,9 @@ import { formatCurrency } from '@/lib/format';
 import { BUDGET_GROUPS, budgetGroupLabels, addExtraIncome, updateExtraIncome, removeExtraIncome, setPlannedSalary, setReceivedSalary, setInvestmentBaseGoal, setDistributionPercent } from '@/lib/cyclePlanning';
 import { useCyclePlanning } from '@/hooks/useCyclePlanning';
 
-export function CyclePlanningSection({ cycleId }: { cycleId: string }) {
-  const { planning, derived, mutate, readOnly } = useCyclePlanning(cycleId);
+export function CyclePlanningSection({ cycleId, cyclePlanning }: { cycleId: string; cyclePlanning: ReturnType<typeof useCyclePlanning> }) {
+  const { planning, derived, mutate, readOnly } = cyclePlanning;
+  const [draft, setDraft] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [newItem, setNewItem] = useState({ description: '', amount: 0 });
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -53,9 +55,11 @@ export function CyclePlanningSection({ cycleId }: { cycleId: string }) {
                   <div key={item.id} className="grid grid-cols-12 gap-2 items-center py-1 px-1 rounded-lg hover:bg-muted/50 group">
                     <div className="col-span-6">
                       {editingId === item.id ? (
-                        <Input value={item.description} onChange={e => mutate(plan => updateExtraIncome(plan, item.id, { description: e.target.value }))} onBlur={() => setEditingId(null)} onKeyDown={e => e.key === 'Enter' && setEditingId(null)} className="h-7 text-xs" autoFocus />
+                        <Input aria-label="Descrição da renda extra" value={draft} onChange={e => setDraft(e.target.value)}
+                          onBlur={() => { if (editingId !== item.id) return; setEditingId(null); if (draft.trim() === item.description) return; if (!draft.trim()) { toast.error('A descrição não pode ficar vazia. O valor anterior foi mantido.'); return; } mutate(plan => updateExtraIncome(plan, item.id, { description: draft })); }}
+                          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') { setEditingId(null); } }} className="h-7 text-xs" autoFocus />
                       ) : (
-                        <div className="text-xs cursor-pointer hover:text-primary" onClick={() => setEditingId(item.id)}>{item.description}</div>
+                        <div className="text-xs cursor-pointer hover:text-primary" onClick={() => { if (readOnly) return; setDraft(item.description); setEditingId(item.id); }}>{item.description}</div>
                       )}
                     </div>
                     <div className="col-span-5">

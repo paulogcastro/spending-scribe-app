@@ -13,7 +13,7 @@ import { SortableItem } from '@/components/ui/sortable-item';
 interface InvestmentSectionProps {
   items: InvestmentItem[];
   goal: number;
-  onGoalChange: (value: number) => void;
+  onGoalChange?: (value: number) => void;
   onAdd: (item: Omit<InvestmentItem, 'id'>) => void;
   onRemove: (id: string) => void;
   onUpdate: (id: string, updates: Partial<InvestmentItem>) => void;
@@ -89,11 +89,9 @@ export function InvestmentSection({
           <Target className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           <span className="text-xs text-muted-foreground">Meta:</span>
           <div className="w-32 flex-shrink-0">
-            <CurrencyInput
-              value={goal}
-              onChange={onGoalChange}
-              className="h-7 text-xs"
-            />
+            {onGoalChange
+              ? <CurrencyInput value={goal} onChange={onGoalChange} className="h-7 text-xs" />
+              : <span className="text-xs font-medium" title="Definida no Planejamento do ciclo">{formatCurrency(goal)}</span>}
           </div>
           <span className="text-xs text-muted-foreground ml-auto">Investido:</span>
           <span className="text-xs font-medium text-category-entertainment">{formatCurrency(totalAmount)}</span>
