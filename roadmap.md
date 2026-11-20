@@ -32,3 +32,8 @@
 - [x] Ajustar regras grupo/natureza, vínculo e datas; CRUD avulso e catálogos com histórico preservado.
 - [x] Integrar Carro, Casa e Gastos diários por ciclo, separados do legado, com confirmação de exclusão.
 - [x] Testar regras, persistência, backup, ciclos anteriores e uso no computador/celular (78 testes; build automático OK).
+
+# Recorrências e parcelamentos (Bloco 3.3)
+- [ ] Implementar definições com alterações futuras, geração idempotente e correção isolada de ocorrências.
+- [ ] Integrar gerenciamento, estados e previsão de compromissos à aba Despesas do ciclo.
+- [ ] Testar histórico, suspensão, parcelas, backups e navegação no computador/celular; conferir build automático.
