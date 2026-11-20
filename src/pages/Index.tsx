@@ -3,7 +3,7 @@ import { useFinances } from '@/hooks/useFinances';
 import { useFinancialCycles } from '@/hooks/useFinancialCycles';
 import { CycleSelector } from '@/components/CycleSelector';
 import { CyclePlanningSection } from '@/components/CyclePlanningSection';
-import { cycleStartDate, legacyMonthForCycle } from '@/lib/financialCycles';
+import { financialPeriods } from '@/lib/financialPeriods';
 import { useCyclePlanning } from '@/hooks/useCyclePlanning';
 import { InvestmentSection } from '@/components/InvestmentSection';
 import { FixedExpenseSection } from '@/components/FixedExpenseSection';
@@ -20,10 +20,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const Index = () => {
   const { cycle, navigate } = useFinancialCycles();
-  const { year: selectedYear, month: selectedMonth } = legacyMonthForCycle(cycle.id);
+  const periods = financialPeriods(cycle.id);
+  const { year: selectedYear, month: selectedMonth } = periods.monthly;
   const cyclePlanning = useCyclePlanning(cycle.id);
   const cycleInvestmentGoal = cyclePlanning.derived.totalInvestmentGoal;
-  const legacyMonthLabel = cycleStartDate(cycle.id).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   const {
     exportBackup,
     restoreBackup,
@@ -80,7 +80,7 @@ const Index = () => {
 
   const handleCopyToNextMonth = () => {
     copyToNextMonth(selectedYear, selectedMonth);
-    toast.success('Dados copiados para o próximo mês!');
+    toast.success('Cópia mensal legada concluída para o próximo mês civil.');
   };
 
   return (
@@ -101,9 +101,9 @@ const Index = () => {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <CycleSelector cycle={cycle} onNavigate={navigate} />
-              <Button variant="outline" size="sm" onClick={handleCopyToNextMonth} className="gap-2" aria-label="Copiar para próximo mês" title="Copiar para próximo mês">
+              <Button variant="outline" size="sm" onClick={handleCopyToNextMonth} className="gap-2" aria-label="Cópia mensal legada para o próximo mês civil" title={`Cópia mensal legada para o próximo mês civil · ${periods.monthly.label}`}>
                 <Copy className="h-4 w-4" />
-                <span className="hidden sm:inline">Copiar para próximo mês</span>
+                <span className="hidden sm:inline">Copiar mês legado</span>
               </Button>
               <BackupControls exportBackup={exportBackup} restoreBackup={restoreBackup} />
             </div>
@@ -112,8 +112,8 @@ const Index = () => {
       </header>
 
       <main className="container py-6 space-y-6">
-        <h2 className="text-sm font-medium text-muted-foreground">Registros do ciclo — {legacyMonthLabel}</h2>
-        <BudgetOverview income={summary.incomeActual} expenses={summary.expensesActual} investments={summary.investmentsTotal} expenseGoal={summary.expensesPlanned} dailyGoal={monthData.expenseGoals?.diarias || 0} dailySpent={summary.diariasTotal} year={selectedYear} month={selectedMonth} />
+        <h2 className="text-sm font-medium text-muted-foreground">Registros mensais — {periods.monthly.label}</h2>
+        <BudgetOverview monthlyPeriodLabel={periods.monthly.label} income={summary.incomeActual} expenses={summary.expensesActual} investments={summary.investmentsTotal} expenseGoal={summary.expensesPlanned} dailyGoal={monthData.expenseGoals?.diarias || 0} dailySpent={summary.diariasTotal} year={selectedYear} month={selectedMonth} />
         <Tabs defaultValue="daily" className="space-y-6">
           <TabsList className="w-full sm:w-auto h-auto grid grid-cols-3 p-1">
             <TabsTrigger value="daily" className="text-xs sm:text-sm">Despesas diárias</TabsTrigger>
@@ -127,6 +127,8 @@ const Index = () => {
             {/* Income & Investments */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-testid="legacy-investments">
               <InvestmentSection
+                monthlyPeriodLabel={periods.monthly.label}
+                cyclePeriodLabel={periods.cycle.label}
                 items={monthData.investments || []}
                 goal={cycleInvestmentGoal}
                 onAdd={handleAddInvestment}
@@ -137,6 +139,7 @@ const Index = () => {
             </div>
 
             {/* Fixed Expenses - Casa */}
+            <h3 className="text-sm font-medium text-muted-foreground">Despesas e metas mensais — {periods.monthly.label}</h3>
             <div className="grid gap-6">
               <FixedExpenseSection
                 title="Casa"
@@ -179,6 +182,7 @@ const Index = () => {
 
           </TabsContent>
           <TabsContent value="daily">
+            <p className="mb-4 text-sm text-muted-foreground">Despesas e meta mensal — {periods.monthly.label}</p>
             {/* Daily Expenses */}
             <DailyExpenseSection
               items={monthData.diarias}
@@ -192,6 +196,8 @@ const Index = () => {
           </TabsContent>
           <TabsContent value="overview">
               <SummaryPanel
+                monthlyPeriodLabel={periods.monthly.label}
+                cyclePeriodLabel={periods.cycle.label}
                 expensesPlanned={summary.expensesPlanned}
                 expensesActual={summary.expensesActual}
                 casaActual={summary.casaActual}
@@ -202,7 +208,6 @@ const Index = () => {
                 investmentsTotal={summary.investmentsTotal}
                 investmentGoal={cycleInvestmentGoal}
                 result={summary.result}
-                resultAfterInvestment={summary.result - cycleInvestmentGoal}
                 expenseGoals={summary.expenseGoals}
                 expensesByCategory={summary.expensesByCategory}
                 dailyExpenses={monthData.diarias}

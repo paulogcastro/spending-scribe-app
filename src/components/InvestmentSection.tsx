@@ -1,4 +1,3 @@
-import { GoalProgress } from '@/components/GoalProgress';
 import { useState } from 'react';
 import { InvestmentItem } from '@/types/finance';
 import { formatCurrency } from '@/lib/format';
@@ -11,6 +10,8 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { SortableItem } from '@/components/ui/sortable-item';
 
 interface InvestmentSectionProps {
+  monthlyPeriodLabel: string;
+  cyclePeriodLabel: string;
   items: InvestmentItem[];
   goal: number;
   onGoalChange?: (value: number) => void;
@@ -21,6 +22,8 @@ interface InvestmentSectionProps {
 }
 
 export function InvestmentSection({
+  monthlyPeriodLabel,
+  cyclePeriodLabel,
   items,
   goal,
   onGoalChange,
@@ -44,7 +47,6 @@ export function InvestmentSection({
   );
 
   const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
-  const difference = totalAmount - goal;
 
   const handleAdd = () => {
     if (!newItem.description) return;
@@ -87,24 +89,20 @@ export function InvestmentSection({
       <div className="flex flex-col gap-1 mb-4 p-2 bg-muted/30 rounded-lg">
         <div className="flex items-center gap-2 flex-wrap">
           <Target className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          <span className="text-xs text-muted-foreground">Meta:</span>
+          <span className="text-xs text-muted-foreground">Meta do ciclo:</span>
           <div className="w-32 flex-shrink-0">
             {onGoalChange
               ? <CurrencyInput value={goal} onChange={onGoalChange} className="h-7 text-xs" />
               : <span className="text-xs font-medium" title="Definida no Planejamento do ciclo">{formatCurrency(goal)}</span>}
           </div>
-          <span className="text-xs text-muted-foreground ml-auto">Investido:</span>
+          <span className="text-xs text-muted-foreground ml-auto">Investido mensal:</span>
           <span className="text-xs font-medium text-category-entertainment">{formatCurrency(totalAmount)}</span>
         </div>
-        <div className="flex items-center justify-end gap-1">
-          <span className="text-xs text-muted-foreground">Diferença:</span>
-          <span className={`text-xs font-medium ${difference >= 0 ? 'text-primary' : 'text-destructive'}`}>
-            {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
-          </span>
-        </div>
+        <p className="text-xs text-muted-foreground">Meta: {cyclePeriodLabel}</p>
+        <p className="text-xs text-muted-foreground">Realizado: {monthlyPeriodLabel}</p>
+        <p className="text-xs text-muted-foreground">Períodos distintos; cumprimento da meta não apurado nesta etapa.</p>
       </div>
 
-      <GoalProgress goal={goal} actual={totalAmount} investment />
 
       <div className="space-y-2">
         {/* Header */}
@@ -198,7 +196,7 @@ export function InvestmentSection({
         {/* Total */}
         {items.length > 0 && (
           <div className="grid grid-cols-12 gap-2 items-center py-2 px-2 border-t border-border mt-2 font-medium ml-6">
-            <div className="col-span-7 text-sm">Total Investido</div>
+            <div className="col-span-7 text-sm">Total investido mensal</div>
             <div className="col-span-4 text-right text-sm text-category-entertainment">{formatCurrency(totalAmount)}</div>
             <div className="col-span-1"></div>
           </div>

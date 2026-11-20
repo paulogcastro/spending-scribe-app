@@ -6,6 +6,8 @@ import { formatDate } from '@/lib/format';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface SummaryPanelProps {
+  monthlyPeriodLabel: string;
+  cyclePeriodLabel: string;
   expensesPlanned: number;
   expensesActual: number;
   casaActual: number;
@@ -16,7 +18,6 @@ interface SummaryPanelProps {
   investmentsTotal: number;
   investmentGoal: number;
   result: number;
-  resultAfterInvestment: number;
   expenseGoals: ExpenseGoals;
   expensesByCategory: Record<ExpenseCategory, number>;
   dailyExpenses: DailyExpense[];
@@ -33,6 +34,8 @@ const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
 };
 
 export function SummaryPanel({
+  monthlyPeriodLabel,
+  cyclePeriodLabel,
   expensesPlanned,
   expensesActual,
   casaActual,
@@ -43,7 +46,6 @@ export function SummaryPanel({
   investmentsTotal,
   investmentGoal,
   result,
-  resultAfterInvestment,
   expenseGoals,
   expensesByCategory,
   dailyExpenses
@@ -51,7 +53,6 @@ export function SummaryPanel({
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   
   const isPositive = result >= 0;
-  const isAfterInvestmentPositive = resultAfterInvestment >= 0;
 
   // Prepare chart data including investments
   const chartDataWithInvestments = useMemo(() => {
@@ -128,18 +129,19 @@ export function SummaryPanel({
     <div className="bg-background space-y-4">
       <h3 className="font-semibold mb-4 flex items-center gap-2 pb-2">
         <Wallet className="h-4 w-4" />
-        Resumo
+        Resumo mensal legado
       </h3>
+      <p className="text-xs text-muted-foreground">{monthlyPeriodLabel} · totais, metas de despesas e gráficos mensais; não representam o ciclo completo.</p>
 
       <div className="grid gap-6 lg:grid-cols-2 [&>div]:min-w-0">
         {/* Expense summary */}
         <div className="grid grid-cols-3 gap-2 text-center lg:col-span-2">
           <div className="p-3 rounded-lg bg-muted/50">
-            <div className="text-xs text-muted-foreground mb-1">Meta de despesas</div>
+            <div className="text-xs text-muted-foreground mb-1">Meta mensal legada de despesas</div>
             <div className="text-sm font-semibold break-words">{formatCurrency(expensesPlanned)}</div>
           </div>
           <div className="p-3 rounded-lg bg-muted/50">
-            <div className="text-xs text-muted-foreground mb-1">Gasto atual</div>
+            <div className="text-xs text-muted-foreground mb-1">Gasto mensal</div>
             <div className="text-sm font-semibold break-words">{formatCurrency(expensesActual)}</div>
           </div>
           <div className="p-3 rounded-lg bg-muted/50">
@@ -155,14 +157,14 @@ export function SummaryPanel({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
               <TrendingUp className="h-4 w-4 text-primary" />
-              <span>Renda Total</span>
+              <span>Renda mensal legada</span>
             </div>
             <div className="text-sm font-medium">{formatCurrency(incomeActual)}</div>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
               <TrendingDown className="h-4 w-4 text-destructive" />
-              <span>Despesas Totais</span>
+              <span>Despesas mensais legadas</span>
             </div>
             <div className="text-sm font-medium">{formatCurrency(expensesActual)}</div>
           </div>
@@ -171,7 +173,7 @@ export function SummaryPanel({
         {/* Result */}
         <div className={`p-4 rounded-lg ${isPositive ? 'bg-primary/10' : 'bg-destructive/10'}`}>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Resultado</span>
+            <span className="text-sm font-medium">Resultado mensal legado</span>
             <span className={`text-lg font-bold ${isPositive ? 'text-primary' : 'text-destructive'}`}>
               {formatCurrency(result)}
             </span>
@@ -185,28 +187,23 @@ export function SummaryPanel({
             Investimentos
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span>Meta de Investimento</span>
+            <span>Meta de investimento do ciclo</span>
             <span className="font-medium">{formatCurrency(investmentGoal)}</span>
           </div>
+          <p className="text-xs text-muted-foreground">{cyclePeriodLabel}</p>
           <div className="flex items-center justify-between text-sm">
-            <span>Investido</span>
+            <span>Investido mensal</span>
             <span className="font-medium text-category-entertainment">{formatCurrency(investmentsTotal)}</span>
           </div>
-          <div className={`p-3 rounded-lg ${isAfterInvestmentPositive ? 'bg-primary/10' : 'bg-destructive/10'}`}>
-            <div className="flex items-center justify-between">
-              <span className="text-xs">Resultado - Meta de investimento</span>
-              <span className={`text-sm font-bold ${isAfterInvestmentPositive ? 'text-primary' : 'text-destructive'}`}>
-                {formatCurrency(resultAfterInvestment)}
-              </span>
-            </div>
-          </div>
+          <p className="text-xs text-muted-foreground">{monthlyPeriodLabel}</p>
+          <p className="text-xs text-muted-foreground">Períodos distintos; cumprimento da meta não apurado nesta etapa.</p>
         </div>
 
         {/* Breakdown by Group */}
         <div className="space-y-3 pt-3 border-t border-border">
           <div className="text-xs font-medium text-muted-foreground uppercase mb-2 flex items-center gap-2">
             <Target className="h-3 w-3" />
-            Despesas por Grupo
+            Despesas por grupo · metas mensais legadas
           </div>
           
           {/* Header */}
@@ -274,8 +271,9 @@ export function SummaryPanel({
         <div className="space-y-3 pt-3 border-t border-border lg:col-span-2">
           <div className="text-xs font-medium text-muted-foreground uppercase mb-2 flex items-center gap-2">
             <BarChart3 className="h-3 w-3" />
-            Uso do Dinheiro
+            Uso do dinheiro · mês civil legado
           </div>
+          <p className="text-xs text-muted-foreground">{monthlyPeriodLabel} · percentuais sobre a renda mensal legada</p>
           
           {/* Pie Chart */}
           {chartDataFull.length > 0 ? (
@@ -345,8 +343,9 @@ export function SummaryPanel({
           <div className="space-y-3 pt-3 border-t border-border lg:col-span-2">
             <div className="text-xs font-medium text-muted-foreground uppercase mb-2 flex items-center gap-2">
               <Calendar className="h-3 w-3" />
-              Despesas por Dia
+              Despesas por dia · registros mensais legados
             </div>
+            <p className="text-xs text-muted-foreground">{monthlyPeriodLabel} · datas dos lançamentos armazenados neste mês</p>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={dailyByDay}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />

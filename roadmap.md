@@ -16,3 +16,9 @@
 - [x] Salário planejado/recebido e rendas extras com acréscimo automático na meta de investimento.
 - [x] Meta principal de despesas e distribuição em cinco submetas com residual em Gastos diários.
 - [x] Cópia de configurações do ciclo anterior sem realizações, e testes das regras.
+
+# Coerência dos indicadores (Bloco 2.2)
+- [x] Identificar registros, indicadores, gráficos e ritmo como mensais legados.
+- [x] Separar meta de investimento do ciclo e realizado mensal, sem comparação.
+- [x] Identificar cópia mensal legada sem alterar sua lógica ou o planejamento.
+- [x] Executar testes e verificar períodos, navegação e cópia na aplicação.
