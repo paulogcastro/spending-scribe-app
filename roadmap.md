@@ -22,3 +22,8 @@
 - [x] Separar meta de investimento do ciclo e realizado mensal, sem comparação.
 - [x] Identificar cópia mensal legada sem alterar sua lógica ou o planejamento.
 - [x] Executar testes e verificar períodos, navegação e cópia na aplicação.
+
+# Fundação do domínio de despesas (Bloco 3.1)
+- [x] Criar entidades, referências e persistência independente por ciclo, sem operações na interface.
+- [x] Incluir domínio no backup v3, preservando v1/v2 e rollback.
+- [x] Testar validação, persistência, referências, backups e isolamento; executar lint e conferir build (lint geral com 6 erros e 7 avisos preexistentes; arquivos alterados sem erros).

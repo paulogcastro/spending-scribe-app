@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { CyclePlanningState, FinancialCycleState, MonthlyData } from '@/types/finance';
 import { CYCLE_STORAGE_KEY, parseCycleState } from './financialCycles';
 import { PLANNING_STORAGE_KEY, parsePlanningState } from './cyclePlanning';
+import { EXPENSE_DOMAIN_STORAGE_KEY, loadExpenseDomainState, parseExpenseDomainState, type ExpenseDomainState } from './expenseDomain';
 
 const money = z.number().finite().nonnegative();
 const item = z.object({ id: z.string().min(1), description: z.string(), note: z.string().optional() });
@@ -20,14 +21,16 @@ const month = z.object({
   expenseGoals: goals.default({ casa: 0, carro: 0, parcelados: 0, diarias: 0 }),
 });
 const schema = z.object({
-  version: z.union([z.literal(1), z.literal(2)]), exportedAt: z.string(), months: z.record(month),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3)]), exportedAt: z.string(), months: z.record(month),
   merchantCategories: z.record(dailyCategories).default({}),
   cycleState: z.unknown().optional(), cyclePlanning: z.unknown().optional(),
+  expenseDomain: z.unknown().optional(),
 });
 export type FinanceBackup = {
-  version: 1 | 2; exportedAt: string; months: Record<string, MonthlyData>;
+  version: 1 | 2 | 3; exportedAt: string; months: Record<string, MonthlyData>;
   merchantCategories: Record<string, z.infer<typeof dailyCategories>>;
   cycleState?: FinancialCycleState; cyclePlanning?: CyclePlanningState;
+  expenseDomain?: ExpenseDomainState;
 };
 export const MONTHS_STORAGE_KEY = 'finance-tracker-data';
 export const MERCHANT_STORAGE_KEY = 'finance-import-categories';
@@ -41,11 +44,15 @@ export function parseBackup(text: string): FinanceBackup {
     }
   }
   const result: FinanceBackup = { version: parsed.version, exportedAt: parsed.exportedAt, months: parsed.months as Record<string, MonthlyData>, merchantCategories: parsed.merchantCategories };
-  if (parsed.version === 2) {
+  if (parsed.version >= 2) {
     // Backups v2 precisam trazer ciclos e planejamento completos e válidos.
     if (parsed.cycleState === undefined || parsed.cyclePlanning === undefined) throw new Error('Backup incompleto.');
     result.cycleState = parseCycleState(JSON.stringify(parsed.cycleState));
     result.cyclePlanning = parsePlanningState(JSON.stringify(parsed.cyclePlanning));
+  }
+  if (parsed.version === 3) {
+    if (parsed.expenseDomain === undefined) throw new Error('Backup sem o novo domínio de despesas.');
+    result.expenseDomain = parseExpenseDomainState(JSON.stringify(parsed.expenseDomain));
   }
   return result;
 }
@@ -62,10 +69,11 @@ export function buildBackup(storage: BackupStorage, months: Record<string, Month
   const read = (key: string, fallback: string) => storage.getItem(key) ?? fallback;
   const cycleText = storage.getItem(CYCLE_STORAGE_KEY);
   const payload = {
-    version: 2, exportedAt: now.toISOString(), months,
+    version: 3, exportedAt: now.toISOString(), months,
     merchantCategories: JSON.parse(read(MERCHANT_STORAGE_KEY, '{}')),
     cycleState: cycleText === null ? undefined : JSON.parse(cycleText),
     cyclePlanning: JSON.parse(read(PLANNING_STORAGE_KEY, '{"version":1,"plans":{}}')),
+    expenseDomain: loadExpenseDomainState(storage),
   };
   if (payload.cycleState === undefined) throw new Error('Estado dos ciclos indisponível.');
   return parseBackup(JSON.stringify(payload));
@@ -78,6 +86,7 @@ export function buildBackup(storage: BackupStorage, months: Record<string, Month
 export function applyBackup(storage: BackupStorage, backup: FinanceBackup): { legacy: boolean } {
   const validated = parseBackup(JSON.stringify(backup));
   const legacy = isLegacyBackup(validated);
+  if (validated.expenseDomain !== undefined) loadExpenseDomainState(storage);
   const writes: [string, string][] = [
     [MONTHS_STORAGE_KEY, JSON.stringify(validated.months)],
     [MERCHANT_STORAGE_KEY, JSON.stringify(validated.merchantCategories)],
@@ -86,11 +95,18 @@ export function applyBackup(storage: BackupStorage, backup: FinanceBackup): { le
     writes.push([CYCLE_STORAGE_KEY, JSON.stringify(validated.cycleState)]);
     writes.push([PLANNING_STORAGE_KEY, JSON.stringify(validated.cyclePlanning)]);
   }
+  if (validated.expenseDomain !== undefined) writes.push([EXPENSE_DOMAIN_STORAGE_KEY, JSON.stringify(validated.expenseDomain)]);
   const snapshot = writes.map(([key]) => [key, storage.getItem(key)] as const);
   try {
     for (const [key, value] of writes) storage.setItem(key, value);
   } catch (error) {
-    for (const [key, value] of snapshot) { if (value === null) storage.removeItem(key); else storage.setItem(key, value); }
+    const rollbackErrors: unknown[] = [];
+    for (const [key, value] of [...snapshot].reverse()) {
+      if (storage.getItem(key) === value) continue;
+      try { if (value === null) storage.removeItem(key); else storage.setItem(key, value); }
+      catch (rollbackError) { rollbackErrors.push(rollbackError); }
+    }
+    if (rollbackErrors.length) throw new Error('Falha ao restaurar o backup e ao recuperar parte dos dados anteriores.');
     throw error;
   }
   return { legacy };

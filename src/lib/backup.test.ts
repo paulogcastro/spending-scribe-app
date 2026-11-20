@@ -35,12 +35,14 @@ const full = () => memory({ [CYCLE_STORAGE_KEY]: JSON.stringify(cycleState), [PL
 
 test('export includes every cycle planning and the cycle state with selected cycle', () => {
   const b = buildBackup(full(), { '2026-11': month as never });
-  assert.equal(b.version, 2);
-  assert.deepEqual(Object.keys(b.cyclePlanning!.plans).sort(), ['2026-11-04', '2026-12-04']);
-  assert.equal(b.cyclePlanning!.plans['2026-11-04'].receivedSalary, 5800);
-  assert.equal(b.cyclePlanning!.plans['2026-11-04'].extraIncomes[0].amount, 300);
-  assert.equal(b.cyclePlanning!.plans['2026-11-04'].distribution.casa, 20);
-  assert.equal(b.cycleState!.selectedCycleId, '2026-12-04');
+  assert.equal(b.version, 3);
+  assert.ok(b.cyclePlanning);
+  assert.ok(b.cycleState);
+  assert.deepEqual(Object.keys(b.cyclePlanning.plans).sort(), ['2026-11-04', '2026-12-04']);
+  assert.equal(b.cyclePlanning.plans['2026-11-04'].receivedSalary, 5800);
+  assert.equal(b.cyclePlanning.plans['2026-11-04'].extraIncomes[0].amount, 300);
+  assert.equal(b.cyclePlanning.plans['2026-11-04'].distribution.casa, 20);
+  assert.equal(b.cycleState.selectedCycleId, '2026-12-04');
   assert.equal(b.months['2026-11'].income[0].actual, 5000);
   assert.equal(b.merchantCategories.padaria, 'alimentacao');
 });
@@ -48,9 +50,9 @@ test('full backup restores months, categories, cycles and planning', () => {
   const b = buildBackup(full(), { '2026-11': month as never });
   const target = memory();
   assert.equal(applyBackup(target, b).legacy, false);
-  assert.equal(JSON.parse(target.getItem(PLANNING_STORAGE_KEY)!).plans['2026-12-04'].plannedSalary, 7000);
-  assert.equal(JSON.parse(target.getItem(CYCLE_STORAGE_KEY)!).selectedCycleId, '2026-12-04');
-  assert.equal(JSON.parse(target.getItem(MONTHS_STORAGE_KEY)!)['2026-11'].diarias[0].amount, 50);
+  assert.equal(JSON.parse(target.getItem(PLANNING_STORAGE_KEY) ?? 'null').plans['2026-12-04'].plannedSalary, 7000);
+  assert.equal(JSON.parse(target.getItem(CYCLE_STORAGE_KEY) ?? 'null').selectedCycleId, '2026-12-04');
+  assert.equal(JSON.parse(target.getItem(MONTHS_STORAGE_KEY) ?? 'null')['2026-11'].diarias[0].amount, 50);
 });
 test('legacy backup restores months but preserves current cycles and planning', () => {
   const target = full();
@@ -60,7 +62,7 @@ test('legacy backup restores months but preserves current cycles and planning', 
   assert.equal(applyBackup(target, legacy).legacy, true);
   assert.equal(target.getItem(CYCLE_STORAGE_KEY), before.c);
   assert.equal(target.getItem(PLANNING_STORAGE_KEY), before.p);
-  assert.equal(JSON.parse(target.getItem(MONTHS_STORAGE_KEY)!)['2026-11'].income[0].actual, 5000);
+  assert.equal(JSON.parse(target.getItem(MONTHS_STORAGE_KEY) ?? 'null')['2026-11'].income[0].actual, 5000);
 });
 test('failed restore keeps all previous data', () => {
   const b = buildBackup(full(), { '2026-11': month as never });
