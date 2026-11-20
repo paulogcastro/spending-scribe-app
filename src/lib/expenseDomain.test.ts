@@ -35,7 +35,7 @@ test('estrutura preserva descrição, valor, grupo, natureza, categoria, pagamen
 });
 
 test('categoria e natureza são independentes; ocorrência tem exatamente um dos cinco grupos', () => {
-  for (const group of ['carro', 'casa', 'fixos', 'parcelados', 'diarias'] as const) {
+  for (const group of ['carro', 'casa', 'diarias'] as const) {
     const state = withOccurrence();
     state.cycles[occurrence.cycleId][0].group = group;
     assert.equal(parse(state).cycles[occurrence.cycleId][0].categoryId, 'category-almoco');
@@ -55,10 +55,11 @@ test('referências inexistentes, chaves diferentes dos IDs e duplicações entre
   assert.throws(() => parse({ ...createExpenseDomainState(), categories: { wrong: { id: 'right', name: 'Categoria', active: true } } }));
 });
 
-test('datas civis inválidas e limites exclusivos são rejeitados sem deslocamento de fuso', () => {
-  for (const date of ['2026-11-03', '2026-12-04', '2026-11-31', '2026-11-00']) {
+test('datas civis inválidas são rejeitadas e datas fora do ciclo são aceitas', () => {
+  for (const date of ['2026-11-31', '2026-11-00']) {
     assert.throws(() => parse({ ...withOccurrence(), cycles: { [occurrence.cycleId]: [{ ...occurrence, date }] } }));
   }
+  for (const date of ['2026-11-03', '2026-12-04']) assert.equal(parse({ ...withOccurrence(), cycles: { [occurrence.cycleId]: [{ ...occurrence, date }] } }).cycles[occurrence.cycleId][0].date, date);
   assert.equal(parse({ ...withOccurrence(), cycles: { [occurrence.cycleId]: [{ ...occurrence, date: '2026-12-03' }] } }).cycles[occurrence.cycleId][0].date, '2026-12-03');
   assert.throws(() => parse({ ...withOccurrence(), cycles: { '2026-02-04': [{ ...occurrence, cycleId: '2026-02-04', date: '2026-02-29' }] } }));
   assert.equal(parse({ ...withOccurrence(), cycles: { '2028-02-04': [{ ...occurrence, cycleId: '2028-02-04', date: '2028-02-29' }] } }).cycles['2028-02-04'][0].date, '2028-02-29');
@@ -141,12 +142,12 @@ test('definições permanentes validadas não geram ocorrências automaticamente
 
 test('referência permanente respeita natureza e um único grupo', () => {
   const state = withOccurrence();
-  state.recurringDefinitions.lunch = { id: 'lunch', description: 'Almoço', amount: 50, group: 'diarias', categoryId: occurrence.categoryId, paymentMethodId: occurrence.paymentMethodId, active: false, startDate: '2026-11-01', dayOfMonth: 5 };
-  state.cycles[occurrence.cycleId][0] = { ...occurrence, nature: 'recorrente', definitionId: 'lunch' };
+  state.recurringDefinitions.lunch = { id: 'lunch', description: 'Almoço', amount: 50, group: 'carro', categoryId: occurrence.categoryId, paymentMethodId: occurrence.paymentMethodId, active: false, startDate: '2026-11-01', dayOfMonth: 5 };
+  state.cycles[occurrence.cycleId][0] = { ...occurrence, group: 'carro', nature: 'recorrente', definitionId: 'lunch' };
   assert.equal(parse(state).cycles[occurrence.cycleId][0].definitionId, 'lunch');
   state.recurringDefinitions.lunch.group = 'casa';
   assert.throws(() => parse(state));
-  state.recurringDefinitions.lunch.group = 'diarias';
+  state.recurringDefinitions.lunch.group = 'carro';
   state.cycles[occurrence.cycleId][0].definitionId = 'missing';
   assert.throws(() => parse(state));
   state.cycles[occurrence.cycleId][0] = { ...occurrence, definitionId: 'lunch' };
@@ -155,8 +156,8 @@ test('referência permanente respeita natureza e um único grupo', () => {
 
 test('parcelas exigem natureza parcelado, número e total inteiros válidos e definição compatível', () => {
   const state = withOccurrence();
-  state.installmentDefinitions.purchase = { id: 'purchase', description: 'Compra', amount: 50, group: 'diarias', categoryId: occurrence.categoryId, paymentMethodId: occurrence.paymentMethodId, active: true, startDate: '2026-11-05', totalInstallments: 12 };
-  state.cycles[occurrence.cycleId][0] = { ...occurrence, nature: 'parcelado', definitionId: 'purchase', installment: { number: 1, total: 12 } };
+  state.installmentDefinitions.purchase = { id: 'purchase', description: 'Compra', amount: 50, group: 'carro', categoryId: occurrence.categoryId, paymentMethodId: occurrence.paymentMethodId, active: true, startDate: '2026-11-05', totalInstallments: 12 };
+  state.cycles[occurrence.cycleId][0] = { ...occurrence, group: 'carro', nature: 'parcelado', definitionId: 'purchase', installment: { number: 1, total: 12 } };
   assert.equal(parse(state).cycles[occurrence.cycleId][0].installment?.total, 12);
   for (const installment of [{ number: 0, total: 12 }, { number: 13, total: 12 }, { number: 1.5, total: 12 }, { number: 1, total: 10 }]) {
     assert.throws(() => parse({ ...state, cycles: { [occurrence.cycleId]: [{ ...state.cycles[occurrence.cycleId][0], installment }] } }));

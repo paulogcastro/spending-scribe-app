@@ -23,7 +23,7 @@ function memory(initial: Record<string, string> = {}, failKey?: string, once = f
 test('exportação v3 inclui o domínio completo sem modificar outras chaves', () => {
   const storage = memory(seed());
   const state = createExpenseDomainState();
-  state.cycles[cycle.id] = [{ id: 'e', cycleId: cycle.id, description: 'Compra', amount: 25, group: 'fixos', nature: 'avulso', categoryId: 'category-hobbies', paymentMethodId: 'payment-inter', date: '2026-11-05', origin: 'importacao' }];
+  state.cycles[cycle.id] = [{ id: 'e', cycleId: cycle.id, description: 'Compra', amount: 25, group: 'casa', nature: 'avulso', categoryId: 'category-hobbies', paymentMethodId: 'payment-inter', date: '2026-11-05', origin: 'importacao' }];
   storage.setItem(EXPENSE_DOMAIN_STORAGE_KEY, JSON.stringify(state));
   const before = [...storage.data];
   const backup = buildBackup(storage, months);
@@ -66,7 +66,7 @@ test('v2 restaura os domínios antigos sem apagar o novo domínio presente nem c
 test('backup v3 incompleto, versão desconhecida ou referências inválidas falham antes de qualquer gravação', () => {
   const valid = buildBackup(memory(seed()), months);
   const state = createExpenseDomainState();
-  state.cycles[cycle.id] = [{ id: 'e', cycleId: cycle.id, description: 'Compra', amount: 25, group: 'fixos', nature: 'avulso', categoryId: 'missing', paymentMethodId: 'payment-inter', date: '2026-11-05', origin: 'manual' }];
+  state.cycles[cycle.id] = [{ id: 'e', cycleId: cycle.id, description: 'Compra', amount: 25, group: 'casa', nature: 'avulso', categoryId: 'missing', paymentMethodId: 'payment-inter', date: '2026-11-05', origin: 'manual' }];
   const target = memory(seed());
   const before = [...target.data];
   for (const invalid of [{ ...valid, expenseDomain: undefined }, { ...valid, cyclePlanning: undefined }, { ...valid, version: 4 }, { ...valid, expenseDomain: state }]) {

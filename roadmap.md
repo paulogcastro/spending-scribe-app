@@ -27,3 +27,8 @@
 - [x] Criar entidades, referências e persistência independente por ciclo, sem operações na interface.
 - [x] Incluir domínio no backup v3, preservando v1/v2 e rollback.
 - [x] Testar validação, persistência, referências, backups e isolamento; executar lint e conferir build (lint geral com 6 erros e 7 avisos preexistentes; arquivos alterados sem erros).
+
+# Lançamentos manuais (Bloco 3.2)
+- [x] Ajustar regras grupo/natureza, vínculo e datas; CRUD avulso e catálogos com histórico preservado.
+- [x] Integrar Carro, Casa e Gastos diários por ciclo, separados do legado, com confirmação de exclusão.
+- [x] Testar regras, persistência, backup, ciclos anteriores e uso no computador/celular (78 testes; build automático OK).

@@ -6,6 +6,10 @@ export const EXPENSE_DOMAIN_STORAGE_KEY = 'spending-scribe-expense-domain-v1';
 const id = z.string().min(1).refine(value => value.trim() === value && !['__proto__', 'constructor', 'prototype'].includes(value));
 const money = z.number().finite().nonnegative();
 const group = z.enum(['carro', 'casa', 'fixos', 'parcelados', 'diarias']);
+export function isExpenseNatureCompatible(group: string, nature: string): boolean {
+  return (group === 'carro' || group === 'casa') ? ['avulso', 'recorrente', 'parcelado'].includes(nature)
+    : group === 'fixos' ? nature === 'recorrente' : group === 'parcelados' ? nature === 'parcelado' : group === 'diarias' && nature === 'avulso';
+}
 const cycleId = id.refine(value => { try { createFinancialCycle(value); return true; } catch { return false; } });
 const date = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/).refine(value => {
   const [year, month, day] = value.split('-').map(Number);
@@ -22,11 +26,11 @@ export const expenseOccurrenceSchema = z.object({
 }).strict().superRefine((value, ctx) => {
   if ((value.nature === 'parcelado') !== (value.installment !== undefined)) ctx.addIssue({ code: 'custom', message: 'Dados de parcela incompatíveis com a natureza.' });
   if (value.nature === 'avulso' && value.definitionId !== undefined) ctx.addIssue({ code: 'custom', message: 'Despesa avulsa não possui definição permanente.' });
-  const cycle = createFinancialCycle(value.cycleId);
-  if (value.date < cycle.startDate || value.date >= cycle.endDate) ctx.addIssue({ code: 'custom', message: 'Data fora do ciclo da ocorrência.' });
+  if (value.nature !== 'avulso' && value.definitionId === undefined) ctx.addIssue({ code: 'custom', message: 'Recorrências e parcelas exigem uma definição permanente.' });
+  if (!isExpenseNatureCompatible(value.group, value.nature)) ctx.addIssue({ code: 'custom', message: 'Grupo incompatível com a natureza da despesa.' });
 });
-export const recurringDefinitionSchema = z.object({ ...common, active: z.boolean(), startDate: date, endDate: date.optional(), dayOfMonth: z.number().int().min(1).max(31) }).strict().refine(value => !value.endDate || value.endDate >= value.startDate);
-export const installmentDefinitionSchema = z.object({ ...common, active: z.boolean(), startDate: date, totalInstallments: z.number().int().positive() }).strict();
+export const recurringDefinitionSchema = z.object({ ...common, active: z.boolean(), startDate: date, endDate: date.optional(), dayOfMonth: z.number().int().min(1).max(31) }).strict().refine(value => !value.endDate || value.endDate >= value.startDate).refine(value => isExpenseNatureCompatible(value.group, 'recorrente'));
+export const installmentDefinitionSchema = z.object({ ...common, active: z.boolean(), startDate: date, totalInstallments: z.number().int().positive() }).strict().refine(value => isExpenseNatureCompatible(value.group, 'parcelado'));
 const stateSchema = z.object({
   version: z.literal(1), cycles: z.record(z.array(expenseOccurrenceSchema)),
   categories: z.record(expenseCategorySchema), paymentMethods: z.record(paymentMethodSchema),
@@ -42,7 +46,7 @@ export type ExpenseDomainState = z.infer<typeof stateSchema>;
 
 // Seeds are independent catalog records, not a migration of monthly transactions.
 export function createExpenseDomainState(): ExpenseDomainState {
-  const categories = Object.fromEntries(Object.entries(expenseCategoryLabels).map(([key, name]) => {
+  const categories = Object.fromEntries(Object.entries(expenseCategoryLabels).filter(([key]) => key !== 'investimento').map(([key, name]) => {
     const id = `category-${key}`;
     return [id, { id, name, active: true }];
   }));
@@ -89,7 +93,14 @@ export function parseExpenseDomainState(text: string): ExpenseDomainState {
 type DomainStorage = Pick<Storage, 'getItem' | 'setItem'>;
 export function loadExpenseDomainState(storage: DomainStorage): ExpenseDomainState {
   const stored = storage.getItem(EXPENSE_DOMAIN_STORAGE_KEY);
-  return stored === null ? createExpenseDomainState() : parseExpenseDomainState(stored);
+  const state = stored === null ? createExpenseDomainState() : parseExpenseDomainState(stored);
+  const investment = state.categories['category-investimento'];
+  if (investment) {
+    const used = [...Object.values(state.cycles).flat(), ...Object.values(state.recurringDefinitions), ...Object.values(state.installmentDefinitions)].some(value => value.categoryId === investment.id);
+    if (used) state.categories[investment.id] = { ...investment, active: false };
+    else delete state.categories[investment.id];
+  }
+  return state;
 }
 
 export function saveExpenseDomainState(storage: DomainStorage, state: ExpenseDomainState): void {
@@ -106,4 +117,43 @@ export function deactivateExpenseCatalogRecord(state: ExpenseDomainState, catalo
   const record = state[catalog][recordId];
   if (!record) throw new Error('Registro não encontrado.');
   return parseExpenseDomainState(JSON.stringify({ ...state, [catalog]: { ...state[catalog], [recordId]: { ...record, active: false } } }));
+}
+
+export type ManualExpenseGroup = 'carro' | 'casa' | 'diarias';
+export interface ManualExpenseInput { description: string; amount: number; categoryId: string; paymentMethodId: string; date: string; note?: string }
+export function localExpenseDate(today = new Date()): string {
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+}
+function validateManualInput(state: ExpenseDomainState, input: ManualExpenseInput, previous?: ExpenseOccurrence) {
+  if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error('O valor deve ser maior que zero.');
+  for (const [catalog, key, oldKey] of [[state.categories, input.categoryId, previous?.categoryId], [state.paymentMethods, input.paymentMethodId, previous?.paymentMethodId]] as const) {
+    if (!catalog[key] || (!catalog[key].active && key !== oldKey)) throw new Error('Selecione uma categoria e uma forma de pagamento ativas.');
+  }
+}
+export function addManualExpense(state: ExpenseDomainState, cycleId: string, group: ManualExpenseGroup, input: ManualExpenseInput): ExpenseDomainState {
+  validateManualInput(state, input);
+  const item = { ...input, id: crypto.randomUUID(), cycleId, group, nature: 'avulso', origin: 'manual' };
+  return parseExpenseDomainState(JSON.stringify({ ...state, cycles: { ...state.cycles, [cycleId]: [item, ...(state.cycles[cycleId] ?? [])] } }));
+}
+export function updateManualExpense(state: ExpenseDomainState, cycleId: string, expenseId: string, input: ManualExpenseInput): ExpenseDomainState {
+  const item = state.cycles[cycleId]?.find(value => value.id === expenseId);
+  if (!item || item.nature !== 'avulso' || !['carro', 'casa', 'diarias'].includes(item.group)) throw new Error('Lançamento avulso não encontrado.');
+  validateManualInput(state, input, item);
+  const updated = { ...item, description: input.description, amount: input.amount, categoryId: input.categoryId, paymentMethodId: input.paymentMethodId, date: input.date, note: input.note };
+  return parseExpenseDomainState(JSON.stringify({ ...state, cycles: { ...state.cycles, [cycleId]: state.cycles[cycleId].map(value => value.id === expenseId ? updated : value) } }));
+}
+export function removeManualExpense(state: ExpenseDomainState, cycleId: string, expenseId: string): ExpenseDomainState {
+  const item = state.cycles[cycleId]?.find(value => value.id === expenseId);
+  if (!item || item.nature !== 'avulso' || !['carro', 'casa', 'diarias'].includes(item.group)) throw new Error('Lançamento avulso não encontrado.');
+  return parseExpenseDomainState(JSON.stringify({ ...state, cycles: { ...state.cycles, [cycleId]: state.cycles[cycleId].filter(value => value.id !== expenseId) } }));
+}
+export function listManualExpenses(state: ExpenseDomainState, cycleId: string, group: ManualExpenseGroup): ExpenseOccurrence[] {
+  return (state.cycles[cycleId] ?? []).filter(value => value.group === group && value.nature === 'avulso').sort((a, b) => b.date.localeCompare(a.date));
+}
+export function saveExpenseCatalogRecord(state: ExpenseDomainState, catalog: 'categories' | 'paymentMethods', input: { id?: string; name: string; active: boolean; type?: PaymentMethod['type'] }): ExpenseDomainState {
+  if (input.id !== undefined && !state[catalog][input.id]) throw new Error('Registro não encontrado.');
+  const recordId = input.id ?? crypto.randomUUID();
+  if (catalog === 'categories' && recordId === 'category-investimento' && input.active) throw new Error('A categoria Investimento foi retirada das despesas.');
+  const record = catalog === 'categories' ? { id: recordId, name: input.name, active: input.active } : { id: recordId, name: input.name, active: input.active, type: input.type };
+  return parseExpenseDomainState(JSON.stringify({ ...state, [catalog]: { ...state[catalog], [recordId]: record } }));
 }

@@ -17,6 +17,7 @@ import { ExpenseGoals } from '@/types/finance';
 import { BudgetOverview } from '@/components/BudgetOverview';
 import { BackupControls } from '@/components/BackupControls';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { CycleExpenses } from '@/components/CycleExpenses';
 
 const Index = () => {
   const { cycle, navigate } = useFinancialCycles();
@@ -114,12 +115,14 @@ const Index = () => {
       <main className="container py-6 space-y-6">
         <h2 className="text-sm font-medium text-muted-foreground">Registros mensais — {periods.monthly.label}</h2>
         <BudgetOverview monthlyPeriodLabel={periods.monthly.label} income={summary.incomeActual} expenses={summary.expensesActual} investments={summary.investmentsTotal} expenseGoal={summary.expensesPlanned} dailyGoal={monthData.expenseGoals?.diarias || 0} dailySpent={summary.diariasTotal} year={selectedYear} month={selectedMonth} />
-        <Tabs defaultValue="daily" className="space-y-6">
-          <TabsList className="w-full sm:w-auto h-auto grid grid-cols-3 p-1">
-            <TabsTrigger value="daily" className="text-xs sm:text-sm">Despesas diárias</TabsTrigger>
+        <Tabs defaultValue="cycle-expenses" className="space-y-6">
+          <TabsList className="w-full sm:w-auto h-auto grid grid-cols-2 sm:grid-cols-4 p-1">
+            <TabsTrigger value="cycle-expenses" className="text-xs sm:text-sm">Despesas do ciclo</TabsTrigger>
+            <TabsTrigger value="daily" className="text-xs sm:text-sm">Diárias mensais legadas</TabsTrigger>
             <TabsTrigger value="planning" className="text-xs sm:text-sm">Planejamento</TabsTrigger>
             <TabsTrigger value="overview" className="text-xs sm:text-sm">Resumo e gráficos</TabsTrigger>
           </TabsList>
+          <TabsContent value="cycle-expenses"><CycleExpenses key={cycle.id} cycleId={cycle.id} periodLabel={periods.cycle.label} /></TabsContent>
           <TabsContent value="planning" className="space-y-6">
             {/* Cycle-based planning (Bloco 2): independente do armazenamento mensal legado */}
             <CyclePlanningSection cycleId={cycle.id} cyclePlanning={cyclePlanning} />

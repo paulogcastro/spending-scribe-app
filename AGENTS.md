@@ -8,4 +8,5 @@
 - Derive displayed monthly and cycle periods with financialPeriods; never compare cycle investment goals to monthly actuals or subtract them from monthly results, because the civil-date intervals differ.
 - Store per-cycle planning (salary, extra incomes, investment base goal, budget distribution) in its own versioned local key indexed by cycleId, with all formulas centralized in pure library functions; legacy MonthlyData stays untouched.
 - Keep the independent expense domain's schemas, inferred types, reference validation and storage access in expenseDomain; occurrences are indexed by cycle, with one budget group and separate nature/category/payment IDs, so legacy records remain untouched.
+- Manual expense and catalog mutations stay in expenseDomain, with useExpenseDomain owning validated persistence and CycleExpenses keyed by the selected cycle; occurrence dates do not choose or restrict cycle membership, preventing accidental reassignment and mixed-cycle edits.
 - Backups v3 include the independent expense domain alongside all previous data; validate before writes and rollback on failure, while v1/v2 restore only their included domains to preserve newer data.
