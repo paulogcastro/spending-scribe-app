@@ -34,6 +34,6 @@
 - [x] Testar regras, persistência, backup, ciclos anteriores e uso no computador/celular (78 testes; build automático OK).
 
 # Recorrências e parcelamentos (Bloco 3.3)
-- [ ] Implementar definições com alterações futuras, geração idempotente e correção isolada de ocorrências.
-- [ ] Integrar gerenciamento, estados e previsão de compromissos à aba Despesas do ciclo.
-- [ ] Testar histórico, suspensão, parcelas, backups e navegação no computador/celular; conferir build automático.
+- [x] Implementar definições com alterações futuras, geração idempotente e correção isolada de ocorrências.
+- [x] Integrar gerenciamento, estados e previsão de compromissos à aba Despesas do ciclo.
+- [x] Testar histórico, suspensão, parcelas, backups e navegação no computador/celular; conferir build automático (96 testes aprovados, fluxo completo e backup v3 verificados; build OK).
