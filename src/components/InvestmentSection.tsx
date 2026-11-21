@@ -100,7 +100,7 @@ export function InvestmentSection({
         </div>
         <p className="text-xs text-muted-foreground">Meta: {cyclePeriodLabel}</p>
         <p className="text-xs text-muted-foreground">Realizado: {monthlyPeriodLabel}</p>
-        <p className="text-xs text-muted-foreground">Períodos distintos; cumprimento da meta não apurado nesta etapa.</p>
+        <p className="text-xs text-muted-foreground">A meta pertence ao ciclo; o valor investido pertence ao mês e não é comparado à meta.</p>
       </div>
 
 

@@ -14,7 +14,7 @@ export function financialPeriods(cycleId: string) {
       year, month, yearMonth,
       startDate: `${yearMonth}-01`,
       endDate: `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`,
-      label: `Mês civil legado · ${monthLabel}`,
+      label: `Controle mensal anterior · ${monthLabel}`,
     },
     cycle: {
       startDate: cycle.startDate,

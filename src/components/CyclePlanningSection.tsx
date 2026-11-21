@@ -23,11 +23,10 @@ export function CyclePlanningSection({ cycleId, cyclePlanning }: { cycleId: stri
   };
 
   return (
-    <section className="space-y-4" aria-label="Planejamento do ciclo">
-      <h3 className="text-sm font-medium text-muted-foreground">Planejamento do ciclo</h3>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <section className="space-y-6" aria-label="Planejamento do ciclo">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Renda do ciclo */}
-        <div className="border border-border p-5 shadow-card bg-card rounded-lg">
+        <div className="min-w-0 border-t border-border pt-5">
           <div className="flex items-center gap-2 mb-4">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
               <Wallet className="h-4 w-4 text-primary" />
@@ -100,7 +99,7 @@ export function CyclePlanningSection({ cycleId, cyclePlanning }: { cycleId: stri
         </div>
 
         {/* Meta de investimento */}
-        <div className="border border-border p-5 shadow-card bg-card rounded-lg">
+        <div className="min-w-0 border-t border-border pt-5">
           <div className="flex items-center gap-2 mb-4">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-category-entertainment/10">
               <PiggyBank className="h-4 w-4 text-category-entertainment" />
@@ -124,12 +123,12 @@ export function CyclePlanningSection({ cycleId, cyclePlanning }: { cycleId: stri
         </div>
 
         {/* Orçamento de despesas */}
-        <div className="border border-border p-5 shadow-card bg-card rounded-lg">
+        <div className="min-w-0 border-t border-border pt-5 lg:col-span-2">
           <div className="flex items-center gap-2 mb-4">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
               <Target className="h-4 w-4 text-primary" />
             </div>
-            <h4 className="font-semibold">Orçamento de despesas</h4>
+            <h4 className="font-semibold">Distribuição do orçamento</h4>
           </div>
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs text-muted-foreground">Meta principal de despesas</span>

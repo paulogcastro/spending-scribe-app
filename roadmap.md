@@ -37,3 +37,8 @@
 - [x] Implementar definições com alterações futuras, geração idempotente e correção isolada de ocorrências.
 - [x] Integrar gerenciamento, estados e previsão de compromissos à aba Despesas do ciclo.
 - [x] Testar histórico, suspensão, parcelas, backups e navegação no computador/celular; conferir build automático (96 testes aprovados, fluxo completo e backup v3 verificados; build OK).
+
+# Limpeza e reorganização da interface
+- [ ] Priorizar Despesas e Planejamento do ciclo e mover o controle mensal para acesso secundário.
+- [ ] Simplificar textos e hierarquia sem alterar regras ou dados.
+- [ ] Verificar navegação, ciclos, integridade, computador/celular e testes; conferir compilação automática.

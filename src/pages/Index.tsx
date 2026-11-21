@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { useFinances } from '@/hooks/useFinances';
 import { useFinancialCycles } from '@/hooks/useFinancialCycles';
 import { CycleSelector } from '@/components/CycleSelector';
@@ -10,7 +10,7 @@ import { FixedExpenseSection } from '@/components/FixedExpenseSection';
 import { InstallmentSection } from '@/components/InstallmentSection';
 import { DailyExpenseSection } from '@/components/DailyExpenseSection';
 import { SummaryPanel } from '@/components/SummaryPanel';
-import { Wallet, Copy } from 'lucide-react';
+import { Wallet, Copy, MoreHorizontal, History, ArrowLeft, Receipt, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ExpenseGoals } from '@/types/finance';
@@ -18,8 +18,10 @@ import { BudgetOverview } from '@/components/BudgetOverview';
 import { BackupControls } from '@/components/BackupControls';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CycleExpenses } from '@/components/CycleExpenses';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
 const Index = () => {
+  const [showMonthly, setShowMonthly] = useState(false);
   const { cycle, navigate } = useFinancialCycles();
   const periods = financialPeriods(cycle.id);
   const { year: selectedYear, month: selectedMonth } = periods.monthly;
@@ -81,7 +83,7 @@ const Index = () => {
 
   const handleCopyToNextMonth = () => {
     copyToNextMonth(selectedYear, selectedMonth);
-    toast.success('Cópia mensal legada concluída para o próximo mês civil.');
+    toast.success('Registros mensais copiados para o próximo mês.');
   };
 
   return (
@@ -102,31 +104,35 @@ const Index = () => {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <CycleSelector cycle={cycle} onNavigate={navigate} />
-              <Button variant="outline" size="sm" onClick={handleCopyToNextMonth} className="gap-2" aria-label="Cópia mensal legada para o próximo mês civil" title={`Cópia mensal legada para o próximo mês civil · ${periods.monthly.label}`}>
-                <Copy className="h-4 w-4" />
-                <span className="hidden sm:inline">Copiar mês legado</span>
-              </Button>
               <BackupControls exportBackup={exportBackup} restoreBackup={restoreBackup} />
+              <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Mais opções" title="Mais opções"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => setShowMonthly(true)}><History className="mr-2 h-4 w-4" />Controle mensal anterior</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
             </div>
           </div>
         </div>
       </header>
 
       <main className="container py-6 space-y-6">
-        <h2 className="text-sm font-medium text-muted-foreground">Registros mensais — {periods.monthly.label}</h2>
-        <BudgetOverview monthlyPeriodLabel={periods.monthly.label} income={summary.incomeActual} expenses={summary.expensesActual} investments={summary.investmentsTotal} expenseGoal={summary.expensesPlanned} dailyGoal={monthData.expenseGoals?.diarias || 0} dailySpent={summary.diariasTotal} year={selectedYear} month={selectedMonth} />
-        <Tabs defaultValue="cycle-expenses" className="space-y-6">
-          <TabsList className="w-full sm:w-auto h-auto grid grid-cols-2 sm:grid-cols-4 p-1">
-            <TabsTrigger value="cycle-expenses" className="text-xs sm:text-sm">Despesas do ciclo</TabsTrigger>
-            <TabsTrigger value="daily" className="text-xs sm:text-sm">Diárias mensais legadas</TabsTrigger>
-            <TabsTrigger value="planning" className="text-xs sm:text-sm">Planejamento</TabsTrigger>
-            <TabsTrigger value="overview" className="text-xs sm:text-sm">Resumo e gráficos</TabsTrigger>
+        {!showMonthly ? <Tabs key="cycle" defaultValue="cycle-expenses" className="space-y-6">
+          <TabsList aria-label="Controle por ciclo" className="grid h-11 w-full grid-cols-2 sm:w-80">
+            <TabsTrigger value="cycle-expenses" className="gap-2"><Receipt className="h-4 w-4" />Despesas</TabsTrigger>
+            <TabsTrigger value="planning" className="gap-2"><Target className="h-4 w-4" />Planejamento</TabsTrigger>
           </TabsList>
           <TabsContent value="cycle-expenses"><CycleExpenses key={cycle.id} cycleId={cycle.id} periodLabel={periods.cycle.label} /></TabsContent>
+          <TabsContent value="planning"><CyclePlanningSection key={cycle.id} cycleId={cycle.id} cyclePlanning={cyclePlanning} /></TabsContent>
+        </Tabs> : <section aria-label="Controle mensal anterior" className="space-y-6">
+          <div className="space-y-4">
+            <Button variant="ghost" size="sm" className="gap-2" onClick={() => setShowMonthly(false)}><ArrowLeft className="h-4 w-4" />Voltar ao controle por ciclo</Button>
+            <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-semibold">Controle mensal anterior</h2><p className="mt-1 text-sm text-muted-foreground">{periods.monthly.label}</p></div><Button variant="outline" size="sm" onClick={handleCopyToNextMonth} className="gap-2" title="Copiar os registros deste mês para o próximo"><Copy className="h-4 w-4" />Copiar mês</Button></div>
+            <p className="border-l-2 border-border pl-3 text-sm text-muted-foreground">Estes registros pertencem ao controle anterior e são separados das despesas e do planejamento por ciclo.</p>
+          </div>
+        <BudgetOverview monthlyPeriodLabel={periods.monthly.label} income={summary.incomeActual} expenses={summary.expensesActual} investments={summary.investmentsTotal} expenseGoal={summary.expensesPlanned} dailyGoal={monthData.expenseGoals?.diarias || 0} dailySpent={summary.diariasTotal} year={selectedYear} month={selectedMonth} />
+        <Tabs key="monthly" defaultValue="daily" className="space-y-6">
+          <TabsList aria-label="Controle mensal anterior" className="w-full sm:w-auto min-h-12 h-auto grid grid-cols-3 p-1">
+            <TabsTrigger value="daily" className="h-full whitespace-normal text-xs sm:text-sm">Despesas diárias</TabsTrigger>
+            <TabsTrigger value="planning" className="h-full whitespace-normal text-xs sm:text-sm">Despesas e investimentos</TabsTrigger>
+            <TabsTrigger value="overview" className="h-full whitespace-normal text-xs sm:text-sm">Resumo e gráficos</TabsTrigger>
+          </TabsList>
           <TabsContent value="planning" className="space-y-6">
-            {/* Cycle-based planning (Bloco 2): independente do armazenamento mensal legado */}
-            <CyclePlanningSection cycleId={cycle.id} cyclePlanning={cyclePlanning} />
-
             {/* Income & Investments */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-testid="legacy-investments">
               <InvestmentSection
@@ -217,6 +223,7 @@ const Index = () => {
               />
           </TabsContent>
         </Tabs>
+        </section>}
       </main>
     </div>
   );
