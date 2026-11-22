@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Car, Home, Receipt, Plus, Pencil, Trash2, Repeat2, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,8 +6,8 @@ import { Label } from '@/components/ui/label';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useExpenseDomain } from '@/hooks/useExpenseDomain';
-import { addManualExpense, updateManualExpense, removeManualExpense, localExpenseDate, generateCycleCommitments, plannedCommitments, correctCommitmentOccurrence, type ExpenseOccurrence, type ManualExpenseInput, type ManualExpenseGroup } from '@/lib/expenseDomain';
+import type { useExpenseDomain } from '@/hooks/useExpenseDomain';
+import { addManualExpense, updateManualExpense, removeManualExpense, localExpenseDate, plannedCommitments, correctCommitmentOccurrence, type ExpenseOccurrence, type ManualExpenseInput, type ManualExpenseGroup } from '@/lib/expenseDomain';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { ExpenseCatalogs } from '@/components/ExpenseCatalogs';
 import { CycleCommitments } from '@/components/CycleCommitments';
@@ -15,14 +15,11 @@ import { getFinancialCycle } from '@/lib/financialCycles';
 
 const areas = [{ group: 'carro', label: 'Carro', icon: Car }, { group: 'casa', label: 'Casa', icon: Home }, { group: 'fixos', label: 'Gastos fixos', icon: Repeat2 }, { group: 'parcelados', label: 'Parcelados', icon: CreditCard }, { group: 'diarias', label: 'Gastos diários', icon: Receipt }] as const;
 interface Editor { group: ManualExpenseGroup; id?: string; input: ManualExpenseInput }
-export function CycleExpenses({ cycleId, periodLabel }: { cycleId: string; periodLabel: string }) {
-  const domain = useExpenseDomain();
+export function CycleExpenses({ cycleId, periodLabel, domain }: { cycleId: string; periodLabel: string; domain: ReturnType<typeof useExpenseDomain> }) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [pending, setPending] = useState<ExpenseOccurrence | null>(null);
   const [correction, setCorrection] = useState<{ item: ExpenseOccurrence; amount: number } | null>(null);
   const todayCycle = getFinancialCycle().id;
-  const { mutate } = domain;
-  useEffect(() => { mutate(state => generateCycleCommitments(state, cycleId, todayCycle)); }, [mutate, cycleId, todayCycle, domain.state]);
   const realized = domain.state.cycles[cycleId] ?? [];
   const projected = cycleId > todayCycle ? plannedCommitments(domain.state, cycleId).filter(item => !realized.some(value => value.definitionId === item.definitionId)) : [];
   const start = (group: ManualExpenseGroup, item?: ExpenseOccurrence) => setEditor({ group, id: item?.id, input: item ? { description: item.description, amount: item.amount, categoryId: item.categoryId, paymentMethodId: item.paymentMethodId, date: item.date, note: item.note ?? '' } : { description: '', amount: 0, categoryId: '', paymentMethodId: '', date: localExpenseDate(), note: '' } });

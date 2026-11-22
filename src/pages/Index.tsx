@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useFinances } from '@/hooks/useFinances';
 import { useFinancialCycles } from '@/hooks/useFinancialCycles';
 import { CycleSelector } from '@/components/CycleSelector';
@@ -18,6 +18,10 @@ import { BudgetOverview } from '@/components/BudgetOverview';
 import { BackupControls } from '@/components/BackupControls';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CycleExpenses } from '@/components/CycleExpenses';
+import { CycleOverview } from '@/components/CycleOverview';
+import { useExpenseDomain } from '@/hooks/useExpenseDomain';
+import { generateCycleCommitments } from '@/lib/expenseDomain';
+import { getFinancialCycle } from '@/lib/financialCycles';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
 const Index = () => {
@@ -26,6 +30,10 @@ const Index = () => {
   const periods = financialPeriods(cycle.id);
   const { year: selectedYear, month: selectedMonth } = periods.monthly;
   const cyclePlanning = useCyclePlanning(cycle.id);
+  const domain = useExpenseDomain();
+  const { mutate: mutateDomain } = domain;
+  const todayCycle = getFinancialCycle().id;
+  useEffect(() => { mutateDomain(state => generateCycleCommitments(state, cycle.id, todayCycle)); }, [mutateDomain, cycle.id, todayCycle, domain.state]);
   const cycleInvestmentGoal = cyclePlanning.derived.totalInvestmentGoal;
   const {
     exportBackup,
@@ -112,14 +120,16 @@ const Index = () => {
       </header>
 
       <main className="container py-6 space-y-6">
-        {!showMonthly ? <Tabs key="cycle" defaultValue="cycle-expenses" className="space-y-6">
+        {!showMonthly ? <>
+        <CycleOverview planning={cyclePlanning.planning} domain={domain.state} periodLabel={periods.cycle.label} readOnly={cyclePlanning.readOnly || domain.readOnly} />
+        <Tabs key="cycle" defaultValue="cycle-expenses" className="space-y-6">
           <TabsList aria-label="Controle por ciclo" className="grid h-11 w-full grid-cols-2 sm:w-80">
             <TabsTrigger value="cycle-expenses" className="gap-2"><Receipt className="h-4 w-4" />Despesas</TabsTrigger>
             <TabsTrigger value="planning" className="gap-2"><Target className="h-4 w-4" />Planejamento</TabsTrigger>
           </TabsList>
-          <TabsContent value="cycle-expenses"><CycleExpenses key={cycle.id} cycleId={cycle.id} periodLabel={periods.cycle.label} /></TabsContent>
+          <TabsContent value="cycle-expenses"><CycleExpenses key={cycle.id} cycleId={cycle.id} periodLabel={periods.cycle.label} domain={domain} /></TabsContent>
           <TabsContent value="planning"><CyclePlanningSection key={cycle.id} cycleId={cycle.id} cyclePlanning={cyclePlanning} /></TabsContent>
-        </Tabs> : <section aria-label="Controle mensal anterior" className="space-y-6">
+        </Tabs></> : <section aria-label="Controle mensal anterior" className="space-y-6">
           <div className="space-y-4">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setShowMonthly(false)}><ArrowLeft className="h-4 w-4" />Voltar ao controle por ciclo</Button>
             <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-semibold">Controle mensal anterior</h2><p className="mt-1 text-sm text-muted-foreground">{periods.monthly.label}</p></div><Button variant="outline" size="sm" onClick={handleCopyToNextMonth} className="gap-2" title="Copiar os registros deste mês para o próximo"><Copy className="h-4 w-4" />Copiar mês</Button></div>

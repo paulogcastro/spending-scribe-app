@@ -42,3 +42,8 @@
 - [x] Priorizar Despesas e Planejamento do ciclo e mover o controle mensal para acesso secundário.
 - [x] Simplificar textos e hierarquia sem alterar regras ou dados.
 - [x] Verificar navegação, ciclos, integridade, computador/celular e testes; conferir compilação automática (96 testes aprovados; cadastro real, leitura, módulos anteriores, gráficos, cópia original, backup v3 e isolamento verificados; compilação OK).
+
+# Acompanhamento nativo do ciclo
+- [ ] Exibir renda, despesas, saldo após reserva, metas e ritmo diário/semanal no topo das duas abas.
+- [ ] Calcular apenas com planejamento e ocorrências do ciclo, mantendo projeções e legado separados.
+- [ ] Testar datas, valores, atualização após alterações, navegação e computador/celular.
