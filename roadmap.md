@@ -44,6 +44,6 @@
 - [x] Verificar navegação, ciclos, integridade, computador/celular e testes; conferir compilação automática (96 testes aprovados; cadastro real, leitura, módulos anteriores, gráficos, cópia original, backup v3 e isolamento verificados; compilação OK).
 
 # Acompanhamento nativo do ciclo
-- [ ] Exibir renda, despesas, saldo após reserva, metas e ritmo diário/semanal no topo das duas abas.
-- [ ] Calcular apenas com planejamento e ocorrências do ciclo, mantendo projeções e legado separados.
-- [ ] Testar datas, valores, atualização após alterações, navegação e computador/celular.
+- [x] Exibir renda, despesas, saldo após reserva, metas e ritmo diário/semanal no topo das duas abas.
+- [x] Calcular apenas com planejamento e ocorrências do ciclo, mantendo projeções e legado separados.
+- [x] Testar datas, valores, atualização após alterações, navegação e computador/celular (100 testes aprovados; regras também verificadas em São Paulo/Nova York; inclusão e edição real, renda extra, persistência, períodos e isolamento mensal conferidos; lint do escopo e compilação automática OK).
