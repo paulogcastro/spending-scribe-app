@@ -10,7 +10,7 @@ import { FixedExpenseSection } from '@/components/FixedExpenseSection';
 import { InstallmentSection } from '@/components/InstallmentSection';
 import { DailyExpenseSection } from '@/components/DailyExpenseSection';
 import { SummaryPanel } from '@/components/SummaryPanel';
-import { Wallet, Copy, MoreHorizontal, History, ArrowLeft, Receipt, Target } from 'lucide-react';
+import { Wallet, Copy, MoreHorizontal, History, ArrowLeft, Receipt, Target, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ExpenseGoals } from '@/types/finance';
@@ -19,13 +19,15 @@ import { BackupControls } from '@/components/BackupControls';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CycleExpenses } from '@/components/CycleExpenses';
 import { CycleOverview } from '@/components/CycleOverview';
+import { CycleExpenseDialog, type CycleExpenseEditor } from '@/components/CycleExpenseDialog';
 import { useExpenseDomain } from '@/hooks/useExpenseDomain';
-import { generateCycleCommitments } from '@/lib/expenseDomain';
+import { generateCycleCommitments, localExpenseDate, type ManualExpenseGroup, type ExpenseOccurrence } from '@/lib/expenseDomain';
 import { getFinancialCycle } from '@/lib/financialCycles';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
 const Index = () => {
   const [showMonthly, setShowMonthly] = useState(false);
+  const [expenseEditor, setExpenseEditor] = useState<CycleExpenseEditor | null>(null);
   const { cycle, navigate } = useFinancialCycles();
   const periods = financialPeriods(cycle.id);
   const { year: selectedYear, month: selectedMonth } = periods.monthly;
@@ -34,6 +36,12 @@ const Index = () => {
   const { mutate: mutateDomain } = domain;
   const todayCycle = getFinancialCycle().id;
   useEffect(() => { mutateDomain(state => generateCycleCommitments(state, cycle.id, todayCycle)); }, [mutateDomain, cycle.id, todayCycle, domain.state]);
+  const navigateCycle = (direction: -1 | 1) => { setExpenseEditor(null); navigate(direction); };
+  const startExpense = (group: ManualExpenseGroup = 'diarias') => setExpenseEditor({ group, input: { description: '', amount: 0, categoryId: '', paymentMethodId: '', date: localExpenseDate(), note: '' } });
+  const editExpense = (item: ExpenseOccurrence) => {
+    if (item.nature !== 'avulso' || (item.group !== 'carro' && item.group !== 'casa' && item.group !== 'diarias')) return;
+    setExpenseEditor({ group: item.group, id: item.id, input: { description: item.description, amount: item.amount, categoryId: item.categoryId, paymentMethodId: item.paymentMethodId, date: item.date, note: item.note ?? '' } });
+  };
   const cycleInvestmentGoal = cyclePlanning.derived.totalInvestmentGoal;
   const {
     exportBackup,
@@ -97,8 +105,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
-        <div className="container py-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="container py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Wallet className="h-5 w-5" />
@@ -111,7 +119,6 @@ const Index = () => {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <CycleSelector cycle={cycle} onNavigate={navigate} />
               <BackupControls exportBackup={exportBackup} restoreBackup={restoreBackup} />
               <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Mais opções" title="Mais opções"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => setShowMonthly(true)}><History className="mr-2 h-4 w-4" />Controle mensal anterior</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
             </div>
@@ -119,7 +126,11 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="container py-6 space-y-6">
+      <main className="container py-4 space-y-4">
+        <div className="sticky top-0 z-20 -mx-2 flex flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-2 py-2">
+          <CycleSelector cycle={cycle} onNavigate={navigateCycle} />
+          {!showMonthly && <Button className="h-11 w-full gap-2 sm:w-auto" disabled={domain.readOnly} onClick={() => startExpense()}><Plus className="h-4 w-4" />Nova despesa</Button>}
+        </div>
         {!showMonthly ? <>
         <CycleOverview planning={cyclePlanning.planning} domain={domain.state} periodLabel={periods.cycle.label} readOnly={cyclePlanning.readOnly || domain.readOnly} />
         <Tabs key="cycle" defaultValue="cycle-expenses" className="space-y-6">
@@ -127,7 +138,7 @@ const Index = () => {
             <TabsTrigger value="cycle-expenses" className="gap-2"><Receipt className="h-4 w-4" />Despesas</TabsTrigger>
             <TabsTrigger value="planning" className="gap-2"><Target className="h-4 w-4" />Planejamento</TabsTrigger>
           </TabsList>
-          <TabsContent value="cycle-expenses"><CycleExpenses key={cycle.id} cycleId={cycle.id} periodLabel={periods.cycle.label} domain={domain} /></TabsContent>
+          <TabsContent value="cycle-expenses"><CycleExpenses key={cycle.id} cycleId={cycle.id} periodLabel={periods.cycle.label} domain={domain} onAdd={startExpense} onEdit={editExpense} /></TabsContent>
           <TabsContent value="planning"><CyclePlanningSection key={cycle.id} cycleId={cycle.id} cyclePlanning={cyclePlanning} /></TabsContent>
         </Tabs></> : <section aria-label="Controle mensal anterior" className="space-y-6">
           <div className="space-y-4">
@@ -235,6 +246,7 @@ const Index = () => {
         </Tabs>
         </section>}
       </main>
+      <CycleExpenseDialog key={cycle.id} editor={expenseEditor} onChange={setExpenseEditor} onClose={() => setExpenseEditor(null)} cycleId={cycle.id} periodLabel={periods.cycle.label} domain={domain} />
     </div>
   );
 };

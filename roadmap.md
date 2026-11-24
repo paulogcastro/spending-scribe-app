@@ -47,3 +47,8 @@
 - [x] Exibir renda, despesas, saldo após reserva, metas e ritmo diário/semanal no topo das duas abas.
 - [x] Calcular apenas com planejamento e ocorrências do ciclo, mantendo projeções e legado separados.
 - [x] Testar datas, valores, atualização após alterações, navegação e computador/celular (100 testes aprovados; regras também verificadas em São Paulo/Nova York; inclusão e edição real, renda extra, persistência, períodos e isolamento mensal conferidos; lint do escopo e compilação automática OK).
+
+# Reorganização para uso cotidiano
+- [x] Compactar acompanhamento com saldo após reserva, despesas e ritmo diário/semanal; recolher detalhes e metas por grupo.
+- [x] Compartilhar formulário avulso entre ação global e lançamentos por grupo, sem alterar compromissos.
+- [x] Verificar testes, compilação, lançamentos existentes e responsividade (100 testes aprovados; lint do escopo e compilação automática OK; inclusão global e por grupo, edição, exclusão, cancelamento, persistência, ciclos, recorrências, parcelas e correção verificados em desktop/mobile; 320px sem transbordamento).
