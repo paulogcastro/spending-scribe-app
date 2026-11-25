@@ -23,6 +23,29 @@ test('cadastro valida valor positivo, descrição, ciclo, quantidade e dia de re
   for (const update of [{ amount: 0 }, { description: ' ' }, { startCycleId: '2026-11-05' }, { categoryId: 'missing' }, { paymentMethodId: '' }, { dayOfMonth: 32 }]) assert.throws(() => addCommitment(createExpenseDomainState(), 'recorrente', { ...input, ...update }));
   for (const totalInstallments of [0, 1.5, -1]) assert.throws(() => addCommitment(createExpenseDomainState(), 'parcelado', { ...input, totalInstallments }));
 });
+for (const group of ['carro', 'casa'] as const) {
+  test(`${group}: parcelamento mantém grupo e valor por parcela até a quantidade cadastrada`, () => {
+    const state = addCommitment(createExpenseDomainState(), 'parcelado', { ...input, group, amount: 150, totalInstallments: 3 });
+    for (const [cycle, number] of [[nov, 1], [dec, 2], [jan, 3]] as const) {
+      const [item] = plannedCommitments(state, cycle);
+      assert.equal(item.group, group);
+      assert.equal(item.amount, 150);
+      assert.deepEqual(item.installment, { number, total: 3 });
+    }
+    assert.equal(plannedCommitments(state, '2027-02-04').length, 0);
+  });
+  test(`${group}: recorrência mantém grupo, valor e dia de referência nos ciclos seguintes`, () => {
+    const state = addCommitment(createExpenseDomainState(), 'recorrente', { ...input, group, amount: 200, dayOfMonth: 12 });
+    for (const cycle of [nov, dec, jan]) {
+      const [item] = plannedCommitments(state, cycle);
+      assert.equal(item.group, group);
+      assert.equal(item.amount, 200);
+      assert.equal(item.date, `${cycle.slice(0, 7)}-12`);
+      assert.equal(item.nature, 'recorrente');
+      assert.equal(item.installment, undefined);
+    }
+  });
+}
 test('gera exatamente uma ocorrência vinculada por ciclo e não gera antes do início', () => {
   const state = recurring(); const id = Object.keys(state.recurringDefinitions)[0];
   assert.equal(plannedCommitments(state, '2026-10-04').length, 0);
