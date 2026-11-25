@@ -5,6 +5,11 @@
 - [x] Exportação e restauração de backup com validação e confirmação.
 - [x] Testes das regras financeiras e verificação no computador/celular.
 
+# Redesign visual da interface (Bloco 4.1)
+- [ ] Unificar tema claro, hierarquia, controles e estados sem mudanças financeiras.
+- [ ] Aplicar padrões ao acompanhamento, despesas, planejamento e formulários por natureza.
+- [ ] Verificar tipos, lint, testes, compilação automática e fluxos desktop/celular; entregar resultados e limitações.
+
 # Fundação de ciclos financeiros
 - [x] Criar identificação e navegação local de ciclos com fronteira no dia 4.
 - [x] Persistir ciclos e seleção em chave independente, sem migrar histórico.

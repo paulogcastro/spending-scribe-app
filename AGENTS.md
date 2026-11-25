@@ -14,3 +14,5 @@
 - Keep cycle expenses and planning in primary navigation and monthly modules behind the secondary menu; presentation changes must not alter monthly calculations, cycle persistence or backup structure.
 - Share one expense-domain hook at the page level and materialize commitments there so both cycle tabs and the always-visible overview read live identical occurrences; compute civil-day pace and reserve-based balances in cycleOverview without monthly actuals or future projections.
 - Own the cycle expense editor at page level and reuse CycleExpenseDialog for global and per-group actions; create Car/Home commitments through addCommitment, while keeping manual edits group-locked and commitment management in its existing flow to preserve domain constraints.
+
+- Scope cycle presentation to semantic theme tokens, shared controls, cycle-tabs and finance-form patterns; keep financial mutation handlers and domain libraries unchanged during visual redesigns.

@@ -17,6 +17,8 @@ export default {
         sans: ['Geist', 'system-ui', 'sans-serif'],
       },
       colors: {
+        overlay: "hsl(var(--overlay))",
+        investment: "hsl(var(--investment))",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

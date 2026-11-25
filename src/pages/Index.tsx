@@ -105,16 +105,16 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
-        <div className="container py-3">
+        <div className="container py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Wallet className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-xl font-bold">Controle de Gastos</h1>
+                <h1 className="text-lg font-semibold">Spending Scribe</h1>
                 <p className="text-sm text-muted-foreground">
-                  Finanças pessoais
+                  Controle de gastos pessoais
                 </p>
               </div>
             </div>
@@ -126,15 +126,15 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="container py-4 space-y-4">
-        <div className="sticky top-0 z-20 -mx-2 flex flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-2 py-2">
+      <main className="container py-6 space-y-6">
+        <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background py-3">
           <CycleSelector cycle={cycle} onNavigate={navigateCycle} />
           {!showMonthly && <Button className="h-11 w-full gap-2 sm:w-auto" disabled={domain.readOnly} onClick={() => startExpense()}><Plus className="h-4 w-4" />Nova despesa</Button>}
         </div>
         {!showMonthly ? <>
         <CycleOverview planning={cyclePlanning.planning} domain={domain.state} periodLabel={periods.cycle.label} readOnly={cyclePlanning.readOnly || domain.readOnly} />
-        <Tabs key="cycle" defaultValue="cycle-expenses" className="space-y-6">
-          <TabsList aria-label="Controle por ciclo" className="grid h-11 w-full grid-cols-2 sm:w-80">
+        <Tabs key="cycle" defaultValue="cycle-expenses" className="space-y-5">
+          <TabsList aria-label="Controle por ciclo" className="cycle-tabs">
             <TabsTrigger value="cycle-expenses" className="gap-2"><Receipt className="h-4 w-4" />Despesas</TabsTrigger>
             <TabsTrigger value="planning" className="gap-2"><Target className="h-4 w-4" />Planejamento</TabsTrigger>
           </TabsList>

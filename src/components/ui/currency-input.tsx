@@ -70,15 +70,15 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
     };
 
     return (
-      <div className="relative">
-        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs pointer-events-none">
+      <div className="relative min-w-0">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs pointer-events-none">
           R$
         </span>
         <input
           type="text"
           inputMode="decimal"
           className={cn(
-            'flex h-9 w-full rounded-md border border-input bg-transparent px-3 pl-7 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-right',
+            'flex h-11 w-full rounded-md border border-input bg-card px-3 pl-9 py-2 text-base sm:text-sm transition-colors file:border-0 file:bg-card file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-right',
             className
           )}
           ref={ref}

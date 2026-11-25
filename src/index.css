@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 220 20% 10%;
+    --background: 210 20% 97%;
+    --foreground: 210 18% 16%;
 
     --card: 0 0% 100%;
     --card-foreground: 220 20% 10%;
@@ -15,14 +15,14 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 10%;
 
-    --primary: 158 64% 40%;
+    --primary: 162 72% 29%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 14% 96%;
     --secondary-foreground: 220 20% 20%;
 
     --muted: 220 14% 96%;
-    --muted-foreground: 220 10% 50%;
+    --muted-foreground: 215 12% 42%;
 
     --accent: 220 14% 93%;
     --accent-foreground: 220 20% 20%;
@@ -30,15 +30,15 @@
     --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 158 64% 40%;
+    --success: 162 72% 29%;
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
     --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 158 64% 40%;
+    --input: 215 16% 81%;
+    --ring: 162 72% 29%;
 
     --radius: 0.5rem;
 
@@ -50,6 +50,10 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --overlay: 210 18% 16%;
+    --investment: 205 65% 35%;
+    --investment-foreground: 205 65% 35%;
 
     /* Category colors */
     --category-food: 25 95% 53%;
@@ -104,6 +108,10 @@
     --input: 217 20% 18%;
     --ring: 158 60% 45%;
 
+    --overlay: 210 18% 4%;
+    --investment: 205 70% 68%;
+    --investment-foreground: 205 70% 68%;
+
     --sidebar-background: 222 20% 8%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -140,4 +148,16 @@
   * { letter-spacing: 0; }
   input { min-width: 0; }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+}
+
+@layer components {
+  .cycle-tabs { @apply flex h-12 w-full justify-start gap-6 rounded-none border-b border-border bg-transparent p-0; }
+  .cycle-tabs > [role="tab"] { @apply h-full rounded-none border-b-2 border-transparent px-1 text-muted-foreground shadow-none; }
+  .cycle-tabs > [role="tab"][data-state="active"] { @apply border-primary bg-transparent text-primary shadow-none; }
+  .finance-form { @apply grid grid-cols-1 gap-4 sm:grid-cols-2; }
+  .finance-form > div { @apply min-w-0 space-y-2; }
+  .finance-form > .form-wide { @apply sm:col-span-2; }
+  .finance-form label { @apply text-sm font-medium; }
+  .finance-form [role="combobox"], .finance-form input { @apply h-11; }
+  .finance-form > .form-actions { @apply mt-2 gap-2 border-t border-border pt-4 sm:col-span-2; }
 }
