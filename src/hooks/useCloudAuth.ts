@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { touchMyProfile, type UserProfileSummary } from '@/lib/adminUsers';
 import {
   applyCloudSnapshotToLocalStorage,
   clearLocalFinanceSession,
@@ -20,6 +21,7 @@ const LAST_USER_KEY = 'dindin-cloud-last-user-id';
 
 export function useCloudAuth(syncTriggerKey: string) {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfileSummary | null>(null);
   const [loading, setLoading] = useState(isSupabaseConfigured);
   const [syncStatus, setSyncStatus] = useState<CloudSyncStatus>('idle');
   const [pendingMigration, setPendingMigration] = useState(false);
@@ -38,6 +40,15 @@ export function useCloudAuth(syncTriggerKey: string) {
 
   const handleSignedInUser = useCallback(async (signedUser: User) => {
     try {
+      const userProfile = await touchMyProfile();
+      setProfile(userProfile);
+      if (userProfile.status === 'blocked') {
+        readyToPushRef.current = false;
+        setPendingMigration(false);
+        setSyncStatus('idle');
+        return;
+      }
+
       const lastUserId = localStorage.getItem(LAST_USER_KEY);
       if (lastUserId && lastUserId !== signedUser.id) {
         clearLocalFinanceSession();
@@ -115,6 +126,7 @@ export function useCloudAuth(syncTriggerKey: string) {
         sessionStorage.removeItem(HYDRATED_KEY);
         recordUpdatedAt(null);
         readyToPushRef.current = false;
+        setProfile(null);
         setPendingMigration(false);
         setSyncStatus('idle');
       }
@@ -128,7 +140,7 @@ export function useCloudAuth(syncTriggerKey: string) {
 
   // Auto-pull newer cloud changes when returning to tab/app (PC <-> Mobile sync)
   useEffect(() => {
-    if (!supabase || !user || pendingMigration) return;
+    if (!supabase || !user || pendingMigration || profile?.status === 'blocked') return;
 
     const checkForUpdates = async () => {
       if (!readyToPushRef.current) return;
@@ -163,11 +175,11 @@ export function useCloudAuth(syncTriggerKey: string) {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('focus', onFocus);
     };
-  }, [user, pendingMigration, recordUpdatedAt]);
+  }, [user, pendingMigration, profile?.status, recordUpdatedAt]);
 
   // Auto-sync local mutations to Supabase when authenticated and hydrated (with conflict protection)
   useEffect(() => {
-    if (!supabase || !user || !readyToPushRef.current || pendingMigration) return;
+    if (!supabase || !user || !readyToPushRef.current || pendingMigration || profile?.status === 'blocked') return;
 
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     setSyncStatus('syncing');
@@ -192,7 +204,7 @@ export function useCloudAuth(syncTriggerKey: string) {
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
-  }, [user, syncTriggerKey, pendingMigration, recordUpdatedAt]);
+  }, [user, syncTriggerKey, pendingMigration, profile?.status, recordUpdatedAt]);
 
   const signIn = async (email: string, password: string) => {
     if (!supabase) throw new Error('Supabase não configurado.');
@@ -259,6 +271,9 @@ export function useCloudAuth(syncTriggerKey: string) {
 
   return {
     user,
+    profile,
+    isAdmin: profile?.role === 'admin' && profile?.status === 'active',
+    isBlocked: profile?.status === 'blocked',
     loading,
     syncStatus,
     pendingMigration,

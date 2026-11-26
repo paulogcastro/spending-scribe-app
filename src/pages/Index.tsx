@@ -5,11 +5,12 @@ import { CycleSelector } from '@/components/CycleSelector';
 import { CyclePlanningSection } from '@/components/CyclePlanningSection';
 import { financialPeriods } from '@/lib/financialPeriods';
 import { useCyclePlanning } from '@/hooks/useCyclePlanning';
-import { Receipt, Target, Plus, Settings2, Loader2 } from 'lucide-react';
+import { Receipt, Target, Plus, Settings2, Loader2, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CycleExpenses } from '@/components/CycleExpenses';
 import { CycleOverview } from '@/components/CycleOverview';
 import { SettingsSection } from '@/components/SettingsSection';
+import { AdminUsersSection } from '@/components/AdminUsersSection';
 import { CycleExpenseDialog, type CycleExpenseEditor } from '@/components/CycleExpenseDialog';
 import { useExpenseDomain } from '@/hooks/useExpenseDomain';
 import {
@@ -26,6 +27,7 @@ import { getFinancialCycle } from '@/lib/financialCycles';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AuthControls } from '@/components/AuthControls';
 import { AuthGateScreen } from '@/components/AuthGateScreen';
+import { BlockedAccountScreen } from '@/components/BlockedAccountScreen';
 import { BrandLogo } from '@/components/BrandLogo';
 import { InstallAppButton } from '@/components/InstallAppButton';
 import { OnboardingDialog, ONBOARDING_STORAGE_KEY } from '@/components/OnboardingDialog';
@@ -33,7 +35,7 @@ import { GuidedTour, TOUR_STORAGE_KEY } from '@/components/GuidedTour';
 import { useCloudAuth } from '@/hooks/useCloudAuth';
 import { hasMeaningfulLocalData, readLocalFinanceSnapshot } from '@/lib/cloudSync';
 
-type MainTab = 'cycle-expenses' | 'planning' | 'settings';
+type MainTab = 'cycle-expenses' | 'planning' | 'settings' | 'admin';
 
 const navItems: { id: MainTab; label: string; icon: typeof Receipt }[] = [
   { id: 'cycle-expenses', label: 'Despesas', icon: Receipt },
@@ -90,6 +92,14 @@ const Index = () => {
     return <AuthGateScreen auth={cloudAuth} />;
   }
 
+  if (cloudAuth.isConfigured && cloudAuth.user && cloudAuth.isBlocked) {
+    return <BlockedAccountScreen auth={cloudAuth} />;
+  }
+
+  const visibleNavItems = cloudAuth.isAdmin
+    ? [...navItems, { id: 'admin' as MainTab, label: 'Admin', icon: Shield }]
+    : navItems;
+
   const overview = computeCycleOverview(cyclePlanning.planning, domain.state);
   const orderedGroups = getOrderedBudgetGroups(domain.state);
 
@@ -132,7 +142,7 @@ const Index = () => {
             aria-label="Navegação principal"
             className="hidden items-center gap-1 rounded-2xl border border-border bg-card p-1 shadow-card sm:inline-flex sm:justify-self-center"
           >
-            {navItems.map(({ id, label, icon: Icon }) => {
+            {visibleNavItems.map(({ id, label, icon: Icon }) => {
               const active = activeTab === id;
               return (
                 <button
@@ -208,14 +218,20 @@ const Index = () => {
             onOpenOnboarding={() => setOnboardingOpen(true)}
           />
         )}
+
+        {activeTab === 'admin' && cloudAuth.isAdmin && cloudAuth.user && (
+          <AdminUsersSection currentUserId={cloudAuth.user.id} />
+        )}
       </main>
 
       {/* Bottom Navigation Bar fixa no celular */}
       <nav
         aria-label="Navegação principal mobile"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-1 border-t border-border bg-card/95 px-2 py-1.5 backdrop-blur-md pb-[max(0.375rem,env(safe-area-inset-bottom))] sm:hidden"
+        className={`fixed inset-x-0 bottom-0 z-30 grid gap-1 border-t border-border bg-card/95 px-2 py-1.5 backdrop-blur-md pb-[max(0.375rem,env(safe-area-inset-bottom))] sm:hidden ${
+          cloudAuth.isAdmin ? 'grid-cols-4' : 'grid-cols-3'
+        }`}
       >
-        {navItems.map(({ id, label, icon: Icon }) => {
+        {visibleNavItems.map(({ id, label, icon: Icon }) => {
           const active = activeTab === id;
           return (
             <button
