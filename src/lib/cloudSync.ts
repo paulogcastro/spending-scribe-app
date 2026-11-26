@@ -65,16 +65,47 @@ export async function fetchCloudFinanceData(userId: string): Promise<CloudFinanc
   };
 }
 
-export async function saveCloudFinanceData(userId: string, snapshot: CloudFinanceSnapshot): Promise<void> {
+export async function fetchCloudUpdatedAt(userId: string): Promise<string | null> {
   if (!supabase) throw new Error('Supabase não configurado.');
+  const { data, error } = await supabase
+    .from('user_finance_data')
+    .select('updated_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.updated_at ?? null;
+}
+
+export type SaveCloudResult =
+  | { conflict: false; updatedAt: string }
+  | { conflict: true; latest: CloudFinanceSnapshot };
+
+export async function saveCloudFinanceData(
+  userId: string,
+  snapshot: CloudFinanceSnapshot,
+  expectedUpdatedAt?: string | null
+): Promise<SaveCloudResult> {
+  if (!supabase) throw new Error('Supabase não configurado.');
+
+  if (expectedUpdatedAt) {
+    const serverUpdatedAt = await fetchCloudUpdatedAt(userId);
+    if (serverUpdatedAt && serverUpdatedAt > expectedUpdatedAt) {
+      const latest = await fetchCloudFinanceData(userId);
+      if (latest) return { conflict: true, latest };
+    }
+  }
+
+  const nextUpdatedAt = new Date().toISOString();
   const payload = {
     user_id: userId,
     cycle_state: snapshot.cycleState ? parseCycleState(JSON.stringify(snapshot.cycleState)) : null,
     cycle_planning: snapshot.cyclePlanning ? parsePlanningState(JSON.stringify(snapshot.cyclePlanning)) : null,
     expense_domain: snapshot.expenseDomain ? parseExpenseDomainState(JSON.stringify(snapshot.expenseDomain)) : null,
-    updated_at: new Date().toISOString(),
+    updated_at: nextUpdatedAt,
   };
 
   const { error } = await supabase.from('user_finance_data').upsert(payload, { onConflict: 'user_id' });
   if (error) throw error;
+  return { conflict: false, updatedAt: nextUpdatedAt };
 }

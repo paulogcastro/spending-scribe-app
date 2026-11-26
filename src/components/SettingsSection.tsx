@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowDown, ArrowUp, Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, HelpCircle, Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,11 +39,13 @@ export function SettingsSection({
   planningPlans,
   exportBackup,
   restoreBackup,
+  onOpenOnboarding,
 }: {
   domain: ReturnType<typeof useExpenseDomain>;
   planningPlans: Record<string, { distribution: Record<string, number> }>;
   exportBackup: () => FinanceBackup;
   restoreBackup: (backup: FinanceBackup) => { legacy: boolean };
+  onOpenOnboarding?: () => void;
 }) {
   const [subTab, setSubTab] = useState<'groups' | 'categories' | 'paymentMethods' | 'backup'>('groups');
   const [groupDraft, setGroupDraft] = useState<{
@@ -85,6 +87,12 @@ export function SettingsSection({
             <p className="text-xs text-muted-foreground">Gerencie grupos, categorias, pagamentos e cópias de segurança</p>
           </div>
         </div>
+        {onOpenOnboarding && (
+          <Button type="button" variant="outline" size="sm" onClick={onOpenOnboarding}>
+            <HelpCircle className="mr-1.5 h-4 w-4" />
+            Como funciona
+          </Button>
+        )}
       </div>
 
       {domain.readOnly && (
