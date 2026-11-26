@@ -202,4 +202,36 @@
     background: linear-gradient(135deg, hsl(340 82% 52% / 0.15) 0%, hsl(var(--card)) 60%);
     border-color: hsl(340 82% 52% / 0.28);
   }
+  .group-card-emerald {
+    background: linear-gradient(135deg, hsl(158 64% 40% / 0.09) 0%, hsl(var(--card)) 55%);
+    border-color: hsl(158 64% 40% / 0.26);
+  }
+  .dark .group-card-emerald {
+    background: linear-gradient(135deg, hsl(158 64% 45% / 0.15) 0%, hsl(var(--card)) 60%);
+    border-color: hsl(158 64% 45% / 0.28);
+  }
+  .group-card-cyan {
+    background: linear-gradient(135deg, hsl(190 75% 42% / 0.09) 0%, hsl(var(--card)) 55%);
+    border-color: hsl(190 75% 42% / 0.26);
+  }
+  .dark .group-card-cyan {
+    background: linear-gradient(135deg, hsl(190 75% 50% / 0.15) 0%, hsl(var(--card)) 60%);
+    border-color: hsl(190 75% 50% / 0.28);
+  }
+  .group-card-indigo {
+    background: linear-gradient(135deg, hsl(235 75% 58% / 0.09) 0%, hsl(var(--card)) 55%);
+    border-color: hsl(235 75% 58% / 0.26);
+  }
+  .dark .group-card-indigo {
+    background: linear-gradient(135deg, hsl(235 75% 65% / 0.15) 0%, hsl(var(--card)) 60%);
+    border-color: hsl(235 75% 65% / 0.28);
+  }
+  .group-card-orange {
+    background: linear-gradient(135deg, hsl(25 95% 53% / 0.09) 0%, hsl(var(--card)) 55%);
+    border-color: hsl(25 95% 53% / 0.26);
+  }
+  .dark .group-card-orange {
+    background: linear-gradient(135deg, hsl(25 95% 58% / 0.15) 0%, hsl(var(--card)) 60%);
+    border-color: hsl(25 95% 58% / 0.28);
+  }
 }

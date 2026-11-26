@@ -6,8 +6,6 @@ import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { formatCurrency } from '@/lib/format';
 import {
-  BUDGET_GROUPS,
-  budgetGroupLabels,
   addExtraIncome,
   updateExtraIncome,
   removeExtraIncome,
@@ -17,16 +15,11 @@ import {
   setInvestedAmount,
   setDistributionPercent,
   setDistributionAmount,
+  computeSubgoals,
 } from '@/lib/cyclePlanning';
+import type { BudgetGroupRecord } from '@/lib/expenseDomain';
+import { getGroupColorStyles } from '@/components/budgetGroupStyles';
 import { useCyclePlanning } from '@/hooks/useCyclePlanning';
-
-const distributionSegmentColors = {
-  carro: 'bg-category-transport',
-  casa: 'bg-warning',
-  fixos: 'bg-category-entertainment',
-  parcelados: 'bg-category-shopping',
-  diarias: 'bg-destructive',
-} as const;
 
 function PercentInput({
   value,
@@ -91,11 +84,13 @@ function PercentInput({
 export function CyclePlanningSection({
   cycleId,
   cyclePlanning,
+  budgetGroups,
   availableToInvest = 0,
   totalDays = 30,
 }: {
   cycleId: string;
   cyclePlanning: ReturnType<typeof useCyclePlanning>;
+  budgetGroups: BudgetGroupRecord[];
   availableToInvest?: number;
   totalDays?: number;
 }) {
@@ -112,7 +107,10 @@ export function CyclePlanningSection({
     setIsAdding(false);
   };
 
-  const totalPercent = BUDGET_GROUPS.reduce((sum, group) => sum + planning.distribution[group], 0) + derived.subgoals.diarias.percent;
+  const editableGroups = budgetGroups.filter(g => !g.isResidual && g.id !== 'diarias');
+  const residualGroup = budgetGroups.find(g => g.isResidual || g.id === 'diarias');
+  const subgoals = computeSubgoals(planning, editableGroups.map(g => g.id));
+  const totalPercent = editableGroups.reduce((sum, group) => sum + (planning.distribution[group.id] ?? 0), 0) + (subgoals.diarias?.percent ?? 0);
 
   const invGoal = derived.totalInvestmentGoal;
   const invested = derived.investedAmount;
@@ -122,7 +120,7 @@ export function CyclePlanningSection({
 
   const incomeInvestPct = planning.plannedSalary > 0 ? Math.round((invGoal / planning.plannedSalary) * 100) : 0;
   const incomeExpensePct = planning.plannedSalary > 0 ? Math.max(0, 100 - incomeInvestPct) : 0;
-  const dailyAvg = totalDays > 0 ? derived.subgoals.diarias.amount / totalDays : 0;
+  const dailyAvg = totalDays > 0 ? (subgoals.diarias?.amount ?? 0) / totalDays : 0;
 
   return (
     <section className="space-y-4" aria-label="Planejamento do ciclo">
@@ -434,26 +432,30 @@ export function CyclePlanningSection({
         {/* Barra Visual Segmentada */}
         <div className="mb-5 space-y-2">
           <div className="flex h-3.5 w-full gap-0.5 overflow-hidden rounded-full bg-secondary" role="img" aria-label="Distribuição percentual do orçamento por grupo">
-            {(['casa', 'carro', 'fixos', 'parcelados', 'diarias'] as const).map(group => {
-              const pct = derived.subgoals[group].percent;
+            {budgetGroups.map(group => {
+              const pct = subgoals[group.id]?.percent ?? 0;
               if (pct <= 0) return null;
+              const styles = getGroupColorStyles(group.color);
               return (
                 <div
-                  key={group}
-                  title={`${budgetGroupLabels[group]}: ${pct}%`}
-                  className={`h-full transition-all ${distributionSegmentColors[group]}`}
+                  key={group.id}
+                  title={`${group.name}: ${pct}%`}
+                  className={`h-full transition-all ${styles.barClass}`}
                   style={{ width: `${pct}%` }}
                 />
               );
             })}
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-            {(['casa', 'carro', 'fixos', 'parcelados', 'diarias'] as const).map(group => (
-              <span key={group} className="inline-flex items-center gap-1.5">
-                <span className={`h-2.5 w-2.5 rounded-full ${distributionSegmentColors[group]}`} />
-                {budgetGroupLabels[group]} ({derived.subgoals[group].percent}%)
-              </span>
-            ))}
+            {budgetGroups.map(group => {
+              const styles = getGroupColorStyles(group.color);
+              return (
+                <span key={group.id} className="inline-flex items-center gap-1.5">
+                  <span className={`h-2.5 w-2.5 rounded-full ${styles.dotClass}`} />
+                  {group.name} ({subgoals[group.id]?.percent ?? 0}%)
+                </span>
+              );
+            })}
           </div>
         </div>
 
@@ -465,41 +467,46 @@ export function CyclePlanningSection({
               <span className="text-right">Percentual (%)</span>
               <span className="text-right">Limite no ciclo (R$)</span>
             </div>
-            {(['casa', 'carro', 'fixos', 'parcelados'] as const).map(group => (
-              <div
-                key={group}
-                className="grid grid-cols-1 items-center gap-2 rounded-xl border border-border p-3 sm:grid-cols-[minmax(0,1.2fr)_7.5rem_9.5rem] sm:gap-3 sm:rounded-none sm:border-0 sm:p-0"
-              >
-                <span className="flex items-center gap-2 text-sm font-medium">
-                  <span className={`h-2 w-2 rounded-full ${distributionSegmentColors[group]}`} />
-                  {budgetGroupLabels[group]}
-                </span>
-                <div>
-                  <span className="mb-1 block text-xs text-muted-foreground sm:hidden">Percentual (%)</span>
-                  <PercentInput
-                    value={planning.distribution[group]}
-                    disabled={readOnly}
-                    ariaLabel={`Percentual de ${budgetGroupLabels[group]}`}
-                    onCommit={val => mutate(plan => setDistributionPercent(plan, group, val))}
-                  />
+            {editableGroups.map(group => {
+              const styles = getGroupColorStyles(group.color);
+              const pct = planning.distribution[group.id] ?? 0;
+              const amt = subgoals[group.id]?.amount ?? 0;
+              return (
+                <div
+                  key={group.id}
+                  className="grid grid-cols-1 items-center gap-2 rounded-xl border border-border p-3 sm:grid-cols-[minmax(0,1.2fr)_7.5rem_9.5rem] sm:gap-3 sm:rounded-none sm:border-0 sm:p-0"
+                >
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    <span className={`h-2 w-2 rounded-full ${styles.dotClass}`} />
+                    {group.name}
+                  </span>
+                  <div>
+                    <span className="mb-1 block text-xs text-muted-foreground sm:hidden">Percentual (%)</span>
+                    <PercentInput
+                      value={pct}
+                      disabled={readOnly}
+                      ariaLabel={`Percentual de ${group.name}`}
+                      onCommit={val => mutate(plan => setDistributionPercent(plan, group.id, val))}
+                    />
+                  </div>
+                  <div>
+                    <span className="mb-1 block text-xs text-muted-foreground sm:hidden">Limite no ciclo (R$)</span>
+                    <CurrencyInput
+                      aria-label={`Limite em reais de ${group.name}`}
+                      value={amt}
+                      onChange={amount => mutate(plan => setDistributionAmount(plan, group.id, amount))}
+                      className="h-11 text-sm"
+                      disabled={readOnly}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <span className="mb-1 block text-xs text-muted-foreground sm:hidden">Limite no ciclo (R$)</span>
-                  <CurrencyInput
-                    aria-label={`Limite em reais de ${budgetGroupLabels[group]}`}
-                    value={derived.subgoals[group].amount}
-                    onChange={amount => mutate(plan => setDistributionAmount(plan, group, amount))}
-                    className="h-11 text-sm"
-                    disabled={readOnly}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
             <div className="grid grid-cols-1 items-center gap-2 border-t border-border pt-3 sm:grid-cols-[minmax(0,1.2fr)_7.5rem_9.5rem] sm:gap-3">
               <div className="flex items-center justify-between gap-2 sm:justify-start">
                 <span className="flex items-center gap-2 text-sm font-semibold">
-                  <span className={`h-2 w-2 rounded-full ${distributionSegmentColors.diarias}`} />
-                  {budgetGroupLabels.diarias}
+                  <span className="h-2 w-2 rounded-full bg-destructive" />
+                  {residualGroup?.name ?? 'Gastos diários'}
                 </span>
                 <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
                   Residual automático
@@ -507,11 +514,11 @@ export function CyclePlanningSection({
               </div>
               <div className="flex items-center justify-between text-sm font-medium text-muted-foreground tabular-nums sm:justify-end">
                 <span className="text-xs sm:hidden">Percentual:</span>
-                <span>{derived.subgoals.diarias.percent}%</span>
+                <span>{subgoals.diarias?.percent ?? 0}%</span>
               </div>
               <div className="flex items-center justify-between text-sm font-bold tabular-nums sm:justify-end">
                 <span className="text-xs font-normal text-muted-foreground sm:hidden">Limite no ciclo:</span>
-                <span>{formatCurrency(derived.subgoals.diarias.amount)}</span>
+                <span>{formatCurrency(subgoals.diarias?.amount ?? 0)}</span>
               </div>
             </div>
           </div>

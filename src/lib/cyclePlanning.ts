@@ -54,25 +54,33 @@ export function mainExpenseGoal(plan: CyclePlanning): number {
   return roundMoney(plan.plannedSalary - plan.investmentBaseGoal);
 }
 
-export function dailyResidualPercent(plan: CyclePlanning): number {
-  const used = BUDGET_GROUPS.reduce((sum, group) => sum + plan.distribution[group], 0);
+function allEditableGroups(plan: CyclePlanning, extraGroups: string[] = []): string[] {
+  const keys = new Set<string>([...BUDGET_GROUPS, ...Object.keys(plan.distribution), ...extraGroups]);
+  keys.delete('diarias');
+  return Array.from(keys);
+}
+
+export function dailyResidualPercent(plan: CyclePlanning, extraGroups: string[] = []): number {
+  const used = allEditableGroups(plan, extraGroups).reduce((sum, group) => sum + (plan.distribution[group] ?? 0), 0);
   return roundMoney(100 - used);
 }
 
 export interface Subgoal { percent: number; amount: number }
 
-// Gastos diários é o residual em reais após os outros quatro grupos,
-// garantindo que a soma das cinco submetas feche exatamente com a meta principal.
-export function computeSubgoals(plan: CyclePlanning): Record<BudgetGroup | 'diarias', Subgoal> {
+// Gastos diários é o residual em reais após os outros grupos,
+// garantindo que a soma das submetas feche exatamente com a meta principal.
+export function computeSubgoals(plan: CyclePlanning, extraGroups: string[] = []): Record<string, Subgoal> {
   const main = mainExpenseGoal(plan);
-  const subgoals = {} as Record<BudgetGroup | 'diarias', Subgoal>;
+  const subgoals: Record<string, Subgoal> = {};
   let allocated = 0;
-  for (const group of BUDGET_GROUPS) {
-    const amount = roundMoney(main * plan.distribution[group] / 100);
-    subgoals[group] = { percent: plan.distribution[group], amount };
+  const groups = allEditableGroups(plan, extraGroups);
+  for (const group of groups) {
+    const pct = plan.distribution[group] ?? 0;
+    const amount = roundMoney(main * pct / 100);
+    subgoals[group] = { percent: pct, amount };
     allocated = roundMoney(allocated + amount);
   }
-  subgoals.diarias = { percent: dailyResidualPercent(plan), amount: roundMoney(main - allocated) };
+  subgoals.diarias = { percent: dailyResidualPercent(plan, extraGroups), amount: roundMoney(main - allocated) };
   return subgoals;
 }
 
@@ -118,8 +126,11 @@ export function setInvestedAmount(plan: CyclePlanning, value: number): CyclePlan
 }
 
 export function setDistributionPercent(plan: CyclePlanning, group: BudgetGroup, value: number): CyclePlanning {
+  if (group === 'diarias') throw new Error('Gastos diários é calculado automaticamente como residual.');
   if (!Number.isFinite(value) || value < 0 || value > 100) throw new Error('O percentual deve estar entre 0% e 100%.');
-  const others = BUDGET_GROUPS.filter(g => g !== group).reduce((sum, g) => sum + plan.distribution[g], 0);
+  const others = allEditableGroups(plan)
+    .filter(g => g !== group)
+    .reduce((sum, g) => sum + (plan.distribution[g] ?? 0), 0);
   if (others + value > 100 + EPSILON) throw new Error('A soma dos percentuais não pode ultrapassar 100%.');
   return { ...plan, distribution: { ...plan.distribution, [group]: roundMoney(value) } };
 }
@@ -200,12 +211,18 @@ function parsePlan(cycleId: string, value: unknown): CyclePlanning {
     if (!entry || typeof entry.id !== 'string' || typeof entry.description !== 'string' || !money(entry.amount)) throw new Error('Renda extra inválida.');
     return { id: entry.id, description: entry.description, amount: entry.amount as number };
   });
-  const dist = plan.distribution as Partial<Record<BudgetGroup, number>> | null;
-  if (!dist) throw new Error('Distribuição de percentuais inválida.');
-  const distribution = {} as Record<BudgetGroup, number>;
+  const dist = plan.distribution as Partial<Record<string, number>> | null;
+  if (!dist || typeof dist !== 'object' || Array.isArray(dist)) throw new Error('Distribuição de percentuais inválida.');
+  const distribution: Record<string, number> = {};
   let total = 0;
   for (const group of BUDGET_GROUPS) {
     const percent = dist[group];
+    if (typeof percent !== 'number' || !Number.isFinite(percent) || percent < 0 || percent > 100) throw new Error('Percentual inválido.');
+    distribution[group] = percent;
+    total += percent;
+  }
+  for (const [group, percent] of Object.entries(dist)) {
+    if (BUDGET_GROUPS.includes(group) || group === 'diarias' || ['__proto__', 'constructor', 'prototype'].includes(group)) continue;
     if (typeof percent !== 'number' || !Number.isFinite(percent) || percent < 0 || percent > 100) throw new Error('Percentual inválido.');
     distribution[group] = percent;
     total += percent;

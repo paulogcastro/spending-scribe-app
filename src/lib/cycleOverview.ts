@@ -1,6 +1,6 @@
 import type { CyclePlanning } from '../types/finance';
-import type { ExpenseDomainState } from './expenseDomain';
-import { computePlanning, roundMoney } from './cyclePlanning';
+import { getBudgetGroupsMap, type ExpenseDomainState } from './expenseDomain';
+import { computePlanning, computeSubgoals, roundMoney } from './cyclePlanning';
 import { createFinancialCycle, cycleStartDate } from './financialCycles';
 
 // UTC is used only to number civil days, not to interpret stored dates as instants.
@@ -53,18 +53,23 @@ export function computeCategoryBreakdown(domain: ExpenseDomainState, cycleId: st
 
 export function computeCycleOverview(plan: CyclePlanning, domain: ExpenseDomainState, today = new Date()) {
   const planning = computePlanning(plan);
-  const groupTotals = { carro: 0, casa: 0, fixos: 0, parcelados: 0, diarias: 0 };
+  const groupsMap = getBudgetGroupsMap(domain);
+  const groupIds = Array.from(new Set([...Object.keys(groupsMap), 'carro', 'casa', 'fixos', 'parcelados', 'diarias']));
+  const subgoals = computeSubgoals(plan, groupIds);
+  const groupTotals: Record<string, number> = Object.fromEntries(groupIds.map(id => [id, 0]));
   // Membership comes from the cycle key; expense dates do not reassign occurrences.
-  for (const item of domain.cycles[plan.cycleId] ?? []) groupTotals[item.group] += item.amount;
-  for (const group of Object.keys(groupTotals) as (keyof typeof groupTotals)[]) groupTotals[group] = roundMoney(groupTotals[group]);
+  for (const item of domain.cycles[plan.cycleId] ?? []) {
+    groupTotals[item.group] = (groupTotals[item.group] ?? 0) + item.amount;
+  }
+  for (const group of Object.keys(groupTotals)) groupTotals[group] = roundMoney(groupTotals[group]);
   const expenses = roundMoney(Object.values(groupTotals).reduce((sum, value) => sum + value, 0));
   const income = roundMoney(plan.receivedSalary + planning.extraIncomeTotal);
   return {
-    ...planning, income, expenses, groupTotals,
+    ...planning, subgoals, income, expenses, groupTotals,
     availableToInvest: roundMoney(income - expenses),
     expenseRemaining: roundMoney(planning.mainExpenseGoal - expenses),
     // This is a planned reserve, not an investment realization (not tracked by cycle yet).
     balanceAfterReserve: roundMoney(income - expenses - planning.totalInvestmentGoal),
-    pace: getCyclePace(plan.cycleId, planning.subgoals.diarias.amount, groupTotals.diarias, today),
+    pace: getCyclePace(plan.cycleId, subgoals.diarias.amount, groupTotals.diarias, today),
   };
 }
