@@ -7,7 +7,6 @@ import { financialPeriods } from '@/lib/financialPeriods';
 import { useCyclePlanning } from '@/hooks/useCyclePlanning';
 import { Receipt, Target, Plus, Settings2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CycleExpenses } from '@/components/CycleExpenses';
 import { CycleOverview } from '@/components/CycleOverview';
 import { SettingsSection } from '@/components/SettingsSection';
@@ -31,7 +30,16 @@ import { BrandLogo } from '@/components/BrandLogo';
 import { InstallAppButton } from '@/components/InstallAppButton';
 import { useCloudAuth } from '@/hooks/useCloudAuth';
 
+type MainTab = 'cycle-expenses' | 'planning' | 'settings';
+
+const navItems: { id: MainTab; label: string; icon: typeof Receipt }[] = [
+  { id: 'cycle-expenses', label: 'Despesas', icon: Receipt },
+  { id: 'planning', label: 'Planejamento', icon: Target },
+  { id: 'settings', label: 'Configurações', icon: Settings2 },
+];
+
 const Index = () => {
+  const [activeTab, setActiveTab] = useState<MainTab>('cycle-expenses');
   const [expenseEditor, setExpenseEditor] = useState<CycleExpenseEditor | null>(null);
   const { cycle, navigate } = useFinancialCycles();
   const periods = financialPeriods(cycle.id);
@@ -100,29 +108,56 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="container space-y-5 py-4 sm:space-y-6 sm:py-6">
-        <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 bg-background/90 py-3 backdrop-blur-sm">
-          <CycleSelector cycle={cycle} onNavigate={navigateCycle} />
-          <Button className="h-11 w-full gap-2 rounded-xl shadow-sm sm:w-auto" disabled={domain.readOnly} onClick={() => startExpense()}>
-            <Plus className="h-4 w-4" />
-            Nova despesa
-          </Button>
+      <main className="container space-y-5 pb-24 pt-4 sm:space-y-6 sm:pb-8 sm:pt-6">
+        {/* Barra superior: Seletor de ciclo + Segmented Control (Desktop) + Nova despesa */}
+        <div className="sticky top-0 z-20 flex flex-col gap-3 bg-background/90 py-2.5 backdrop-blur-sm sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+          <div className="sm:justify-self-start">
+            <CycleSelector cycle={cycle} onNavigate={navigateCycle} />
+          </div>
+
+          <nav
+            aria-label="Navegação principal"
+            className="hidden items-center gap-1 rounded-2xl border border-border bg-card p-1 shadow-card sm:inline-flex sm:justify-self-center"
+          >
+            {navItems.map(({ id, label, icon: Icon }) => {
+              const active = activeTab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-current={active ? 'page' : undefined}
+                  onClick={() => setActiveTab(id)}
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+                    active
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="sm:justify-self-end">
+            {activeTab === 'cycle-expenses' && (
+              <Button className="h-11 w-full gap-2 rounded-xl shadow-sm sm:w-auto" disabled={domain.readOnly} onClick={() => startExpense()}>
+                <Plus className="h-4 w-4" />
+                Nova despesa
+              </Button>
+            )}
+          </div>
         </div>
 
-        <CycleOverview
-          planning={cyclePlanning.planning}
-          domain={domain.state}
-          periodLabel={periods.cycle.label}
-          readOnly={cyclePlanning.readOnly || domain.readOnly}
-        />
-
-        <Tabs key="cycle" defaultValue="cycle-expenses" className="space-y-5">
-          <TabsList aria-label="Controle por ciclo" className="cycle-tabs">
-            <TabsTrigger value="cycle-expenses" className="gap-2"><Receipt className="h-4 w-4" />Despesas</TabsTrigger>
-            <TabsTrigger value="planning" className="gap-2"><Target className="h-4 w-4" />Planejamento</TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2"><Settings2 className="h-4 w-4" />Configurações</TabsTrigger>
-          </TabsList>
-          <TabsContent value="cycle-expenses">
+        {activeTab === 'cycle-expenses' && (
+          <div className="space-y-6">
+            <CycleOverview
+              planning={cyclePlanning.planning}
+              domain={domain.state}
+              periodLabel={periods.cycle.label}
+              readOnly={cyclePlanning.readOnly || domain.readOnly}
+            />
             <CycleExpenses
               key={cycle.id}
               cycleId={cycle.id}
@@ -132,27 +167,55 @@ const Index = () => {
               onAdd={startExpense}
               onEdit={editExpense}
             />
-          </TabsContent>
-          <TabsContent value="planning">
-            <CyclePlanningSection
-              key={cycle.id}
-              cycleId={cycle.id}
-              cyclePlanning={cyclePlanning}
-              budgetGroups={orderedGroups}
-              availableToInvest={overview.availableToInvest}
-              totalDays={overview.pace.totalDays}
-            />
-          </TabsContent>
-          <TabsContent value="settings">
-            <SettingsSection
-              domain={domain}
-              planningPlans={cyclePlanning.plans}
-              exportBackup={exportBackup}
-              restoreBackup={restoreBackup}
-            />
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
+
+        {activeTab === 'planning' && (
+          <CyclePlanningSection
+            key={cycle.id}
+            cycleId={cycle.id}
+            cyclePlanning={cyclePlanning}
+            budgetGroups={orderedGroups}
+            availableToInvest={overview.availableToInvest}
+            totalDays={overview.pace.totalDays}
+          />
+        )}
+
+        {activeTab === 'settings' && (
+          <SettingsSection
+            domain={domain}
+            planningPlans={cyclePlanning.plans}
+            exportBackup={exportBackup}
+            restoreBackup={restoreBackup}
+          />
+        )}
       </main>
+
+      {/* Bottom Navigation Bar fixa no celular */}
+      <nav
+        aria-label="Navegação principal mobile"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-1 border-t border-border bg-card/95 px-2 py-1.5 backdrop-blur-md pb-[max(0.375rem,env(safe-area-inset-bottom))] sm:hidden"
+      >
+        {navItems.map(({ id, label, icon: Icon }) => {
+          const active = activeTab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-current={active ? 'page' : undefined}
+              onClick={() => setActiveTab(id)}
+              className={`flex flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[11px] transition-colors ${
+                active
+                  ? 'bg-primary/15 font-semibold text-primary'
+                  : 'font-medium text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
       <CycleExpenseDialog
         key={cycle.id}

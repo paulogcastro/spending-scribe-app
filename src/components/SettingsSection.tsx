@@ -102,11 +102,19 @@ export function SettingsSection({
         }}
         className="space-y-4"
       >
-        <TabsList className="grid h-auto w-full max-w-lg grid-cols-2 gap-1 sm:grid-cols-4">
-          <TabsTrigger value="groups" className="py-2">Grupos</TabsTrigger>
-          <TabsTrigger value="categories" className="py-2">Categorias</TabsTrigger>
-          <TabsTrigger value="paymentMethods" className="py-2">Pagamentos</TabsTrigger>
-          <TabsTrigger value="backup" className="py-2">Backup</TabsTrigger>
+        <TabsList className="grid h-auto w-full max-w-lg grid-cols-2 gap-1 rounded-2xl border border-border bg-card p-1 shadow-card sm:grid-cols-4">
+          <TabsTrigger value="groups" className="rounded-xl py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm hover:bg-secondary/70">
+            Grupos
+          </TabsTrigger>
+          <TabsTrigger value="categories" className="rounded-xl py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm hover:bg-secondary/70">
+            Categorias
+          </TabsTrigger>
+          <TabsTrigger value="paymentMethods" className="rounded-xl py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm hover:bg-secondary/70">
+            Pagamentos
+          </TabsTrigger>
+          <TabsTrigger value="backup" className="rounded-xl py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm hover:bg-secondary/70">
+            Backup
+          </TabsTrigger>
         </TabsList>
 
         {/* Sub-aba 1: Grupos Orçamentários */}
