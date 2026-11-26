@@ -24,6 +24,7 @@ import { useExpenseDomain } from '@/hooks/useExpenseDomain';
 import { generateCycleCommitments, localExpenseDate, type ManualExpenseGroup, type ExpenseOccurrence } from '@/lib/expenseDomain';
 import { getFinancialCycle } from '@/lib/financialCycles';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const Index = () => {
   const [showMonthly, setShowMonthly] = useState(false);
@@ -105,20 +106,26 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
-        <div className="container py-4">
+        <div className="container py-3.5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
                 <Wallet className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold">Spending Scribe</h1>
-                <p className="text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base font-bold tracking-tight sm:text-lg">Spending Scribe</h1>
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    Por ciclos
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground sm:text-sm">
                   Controle de gastos pessoais
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <ThemeToggle />
               <BackupControls exportBackup={exportBackup} restoreBackup={restoreBackup} />
               <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Mais opções" title="Mais opções"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => setShowMonthly(true)}><History className="mr-2 h-4 w-4" />Controle mensal anterior</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
             </div>
@@ -127,9 +134,9 @@ const Index = () => {
       </header>
 
       <main className="container py-6 space-y-6">
-        <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background py-3">
+        <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 bg-background/90 py-3 backdrop-blur-sm">
           <CycleSelector cycle={cycle} onNavigate={navigateCycle} />
-          {!showMonthly && <Button className="h-11 w-full gap-2 sm:w-auto" disabled={domain.readOnly} onClick={() => startExpense()}><Plus className="h-4 w-4" />Nova despesa</Button>}
+          {!showMonthly && <Button className="h-11 w-full gap-2 rounded-xl shadow-sm sm:w-auto" disabled={domain.readOnly} onClick={() => startExpense()}><Plus className="h-4 w-4" />Nova despesa</Button>}
         </div>
         {!showMonthly ? <>
         <CycleOverview planning={cyclePlanning.planning} domain={domain.state} periodLabel={periods.cycle.label} readOnly={cyclePlanning.readOnly || domain.readOnly} />
@@ -138,7 +145,7 @@ const Index = () => {
             <TabsTrigger value="cycle-expenses" className="gap-2"><Receipt className="h-4 w-4" />Despesas</TabsTrigger>
             <TabsTrigger value="planning" className="gap-2"><Target className="h-4 w-4" />Planejamento</TabsTrigger>
           </TabsList>
-          <TabsContent value="cycle-expenses"><CycleExpenses key={cycle.id} cycleId={cycle.id} periodLabel={periods.cycle.label} domain={domain} onAdd={startExpense} onEdit={editExpense} /></TabsContent>
+          <TabsContent value="cycle-expenses"><CycleExpenses key={cycle.id} cycleId={cycle.id} periodLabel={periods.cycle.label} domain={domain} subgoals={cyclePlanning.derived.subgoals} onAdd={startExpense} onEdit={editExpense} /></TabsContent>
           <TabsContent value="planning"><CyclePlanningSection key={cycle.id} cycleId={cycle.id} cyclePlanning={cyclePlanning} /></TabsContent>
         </Tabs></> : <section aria-label="Controle mensal anterior" className="space-y-6">
           <div className="space-y-4">
