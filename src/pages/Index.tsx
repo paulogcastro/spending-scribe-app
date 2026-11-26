@@ -114,7 +114,7 @@ const Index = () => {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-base font-bold tracking-tight sm:text-lg">Spending Scribe</h1>
+                  <h1 className="text-base font-bold tracking-tight sm:text-lg">DinDin Flow</h1>
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                     Por ciclos
                   </span>
