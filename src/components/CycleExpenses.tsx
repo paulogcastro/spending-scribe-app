@@ -104,14 +104,14 @@ export function CycleExpenses({
           <h2 className="text-lg font-semibold">Lançamentos do ciclo</h2>
           <p className="text-xs text-muted-foreground">{periodLabel}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setChartOpen(true)}>
-            <PieChart className="mr-1.5 h-4 w-4" />
-            Por categoria
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
+          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setChartOpen(true)}>
+            <PieChart className="mr-1.5 h-4 w-4 shrink-0" />
+            <span className="truncate">Por categoria</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setCommitmentsOpen(true)}>
-            <Repeat2 className="mr-1.5 h-4 w-4" />
-            Recorrências e parcelas
+          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setCommitmentsOpen(true)}>
+            <Repeat2 className="mr-1.5 h-4 w-4 shrink-0" />
+            <span className="truncate">Recorrências</span>
           </Button>
         </div>
       </div>
@@ -145,9 +145,9 @@ export function CycleExpenses({
               aria-label={`${groupRecord.name} do ciclo`}
               className={`overflow-hidden rounded-2xl border shadow-card transition-shadow hover:shadow-card-hover ${styles.cardClass} ${isOddLast ? 'lg:col-span-2' : ''}`}
             >
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-4 py-3.5 sm:px-5 sm:py-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm ${styles.badgeClass}`}>
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm sm:h-10 sm:w-10 ${styles.badgeClass}`}>
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
@@ -186,7 +186,7 @@ export function CycleExpenses({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="bg-card/85 hover:bg-card"
+                      className="shrink-0 bg-card/85 hover:bg-card"
                       disabled={domain.readOnly}
                       onClick={() => onAdd(groupRecord.id)}
                       aria-label={`Adicionar despesa em ${groupRecord.name}`}
@@ -198,7 +198,7 @@ export function CycleExpenses({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="bg-card/85 hover:bg-card"
+                      className="shrink-0 bg-card/85 hover:bg-card"
                       disabled={domain.readOnly}
                       onClick={() => setCommitmentsOpen(true)}
                       aria-label={`Gerenciar ${groupRecord.name}`}
@@ -211,7 +211,7 @@ export function CycleExpenses({
               </div>
 
               {items.length === 0 ? (
-                <div className="px-5 py-6 text-center text-xs text-muted-foreground">
+                <div className="px-4 py-6 text-center text-xs text-muted-foreground sm:px-5">
                   Nenhum lançamento registrado em <strong className="font-medium text-foreground">{groupRecord.name}</strong> neste ciclo.
                 </div>
               ) : (
@@ -221,9 +221,9 @@ export function CycleExpenses({
                     const categoryName = domain.state.categories[item.categoryId]?.name;
                     const paymentName = domain.state.paymentMethods[item.paymentMethodId]?.name;
                     return (
-                      <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-card/50">
-                        <div className="min-w-0 flex-1 basis-48 space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
+                      <li key={item.id} className="flex items-start justify-between gap-2.5 px-4 py-3 transition-colors hover:bg-card/50 sm:items-center sm:px-5 sm:py-3.5">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                             <p className="break-words text-sm font-semibold">{item.description}</p>
                             <span
                               className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -274,38 +274,40 @@ export function CycleExpenses({
                           )}
                         </div>
 
-                        <div className="flex shrink-0 items-center gap-1">
-                          <span className={`mr-1 text-sm font-bold tabular-nums ${isProjected ? 'text-muted-foreground' : 'text-foreground'}`}>
+                        <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">
+                          <span className={`text-sm font-bold tabular-nums sm:mr-1 ${isProjected ? 'text-muted-foreground' : 'text-foreground'}`}>
                             {formatCurrency(item.amount)}
                           </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10"
-                            title={`Editar ${item.description}`}
-                            aria-label={`Editar despesa ${item.description}`}
-                            disabled={domain.readOnly || isProjected}
-                            onClick={() => {
-                              if (item.nature === 'avulso') onEdit(item);
-                              else openCommitmentEdit(item);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10"
-                            title={`Excluir ${item.description}`}
-                            aria-label={`Excluir despesa ${item.description}`}
-                            disabled={domain.readOnly || isProjected}
-                            onClick={() => {
-                              if (item.nature === 'avulso') setPendingManual(item);
-                              else setPendingCommitmentDelete(item);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <div className="flex items-center gap-0.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 sm:h-10 sm:w-10"
+                              title={`Editar ${item.description}`}
+                              aria-label={`Editar despesa ${item.description}`}
+                              disabled={domain.readOnly || isProjected}
+                              onClick={() => {
+                                if (item.nature === 'avulso') onEdit(item);
+                                else openCommitmentEdit(item);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 sm:h-10 sm:w-10"
+                              title={`Excluir ${item.description}`}
+                              aria-label={`Excluir despesa ${item.description}`}
+                              disabled={domain.readOnly || isProjected}
+                              onClick={() => {
+                                if (item.nature === 'avulso') setPendingManual(item);
+                                else setPendingCommitmentDelete(item);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
                       </li>
                     );

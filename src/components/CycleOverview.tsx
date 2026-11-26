@@ -45,19 +45,19 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
     <section aria-label="Acompanhamento do ciclo" className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
         {/* Hero Card: Saldo disponível no ciclo */}
-        <div className="flex flex-col justify-between gap-4 rounded-2xl border border-border bg-card p-5 shadow-card md:col-span-5">
-          <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col justify-between gap-4 rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5 md:col-span-5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <Wallet className="h-3.5 w-3.5 shrink-0" />
                 Saldo disponível no ciclo
               </h2>
-              <p className={`mt-1.5 break-words text-3xl font-bold tracking-tight tabular-nums ${balanceTone}`}>
+              <p className={`mt-1.5 break-words text-2xl font-bold tracking-tight tabular-nums sm:text-3xl ${balanceTone}`}>
                 {formatCurrency(summary.balanceAfterReserve)}
               </p>
             </div>
             <span
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+              className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${
                 isNegativeBalance
                   ? 'bg-destructive/10 text-destructive'
                   : isPositiveBalance
@@ -75,27 +75,27 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
           </div>
 
           <div className="space-y-2.5 border-t border-border pt-3">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between gap-2 text-xs">
               <span className="flex items-center gap-1.5 text-muted-foreground">
-                <PiggyBank className="h-3.5 w-3.5 text-investment" />
+                <PiggyBank className="h-3.5 w-3.5 shrink-0 text-investment" />
                 Reserva de investimento
               </span>
-              <span className="font-semibold tabular-nums text-investment">
+              <span className="shrink-0 font-semibold tabular-nums text-investment">
                 {formatCurrency(summary.totalInvestmentGoal)}
               </span>
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between gap-2 text-xs">
                 <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <CalendarDays className="h-3.5 w-3.5" />
+                  <CalendarDays className="h-3.5 w-3.5 shrink-0" />
                   {pace.status === 'closed'
                     ? 'Ciclo encerrado'
                     : pace.status === 'future'
                       ? `Ciclo futuro · ${pace.totalDays} dias`
                       : `${pace.daysElapsed} de ${pace.totalDays} dias (${pace.daysRemaining} restantes)`}
                 </span>
-                <span className="font-medium tabular-nums text-muted-foreground">{timeProgress}%</span>
+                <span className="shrink-0 font-medium tabular-nums text-muted-foreground">{timeProgress}%</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                 <div
@@ -108,8 +108,8 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
         </div>
 
         {/* Card: Despesas realizadas vs Limite */}
-        <div className="flex flex-col justify-between gap-4 rounded-2xl border border-border bg-card p-5 shadow-card md:col-span-4">
-          <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-col justify-between gap-4 rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5 md:col-span-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <h3 className="text-xs font-medium text-muted-foreground">Despesas realizadas</h3>
               <p className={`mt-1.5 break-words text-2xl font-bold tracking-tight tabular-nums ${expenseTone}`}>
@@ -117,7 +117,7 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
               </p>
             </div>
             <span
-              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${
+              className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${
                 isOverExpenseLimit
                   ? 'bg-destructive/10 text-destructive'
                   : isNearExpenseLimit
@@ -152,26 +152,26 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
         </div>
 
         {/* Card: Ritmo diário e semanal */}
-        <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border bg-card p-5 shadow-card md:col-span-3">
+        <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5 md:col-span-3">
           <div className="flex items-center justify-between gap-2">
             <h3 className="flex items-center gap-1.5 text-xs font-semibold">
-              <TrendingUp className="h-3.5 w-3.5 text-primary" />
+              <TrendingUp className="h-3.5 w-3.5 shrink-0 text-primary" />
               Ritmo · Gastos diários
             </h3>
-            <span className="text-xs text-muted-foreground tabular-nums">
+            <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
               {pace.daysRemaining} {pace.daysRemaining === 1 ? 'dia' : 'dias'}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2.5 md:grid-cols-1">
             <div className="rounded-xl bg-secondary/70 p-3">
               <p className="text-xs text-muted-foreground">Disponível por dia</p>
-              <p className="mt-0.5 break-words text-lg font-bold tabular-nums text-foreground">
+              <p className="mt-0.5 break-words text-base font-bold tabular-nums text-foreground sm:text-lg">
                 {pace.hasGoal ? formatCurrency(pace.daily) : '—'}
               </p>
             </div>
             <div className="rounded-xl bg-secondary/70 p-3">
               <p className="text-xs text-muted-foreground">Próximos 7 dias</p>
-              <p className="mt-0.5 break-words text-lg font-bold tabular-nums text-foreground">
+              <p className="mt-0.5 break-words text-base font-bold tabular-nums text-foreground sm:text-lg">
                 {pace.hasGoal ? formatCurrency(pace.weekly) : '—'}
               </p>
             </div>
