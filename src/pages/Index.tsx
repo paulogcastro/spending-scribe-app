@@ -28,6 +28,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { AuthControls } from '@/components/AuthControls';
 import { AuthGateScreen } from '@/components/AuthGateScreen';
 import { BrandLogo } from '@/components/BrandLogo';
+import { InstallAppButton } from '@/components/InstallAppButton';
 import { useCloudAuth } from '@/hooks/useCloudAuth';
 
 const Index = () => {
@@ -91,6 +92,7 @@ const Index = () => {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <InstallAppButton />
               <AuthControls auth={cloudAuth} />
               <ThemeToggle />
             </div>

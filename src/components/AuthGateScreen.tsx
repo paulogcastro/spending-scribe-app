@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { BrandLogo } from '@/components/BrandLogo';
+import { InstallAppButton } from '@/components/InstallAppButton';
 import type { useCloudAuth } from '@/hooks/useCloudAuth';
 
 export function AuthGateScreen({ auth }: { auth: ReturnType<typeof useCloudAuth> }) {
@@ -61,7 +62,10 @@ export function AuthGateScreen({ auth }: { auth: ReturnType<typeof useCloudAuth>
           <BrandLogo size="sm" />
           <span className="text-sm font-bold tracking-tight">DinDin Flow</span>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <InstallAppButton />
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="relative z-10 flex flex-1 items-center justify-center px-4 pb-12 pt-4">
