@@ -35,6 +35,8 @@ import { computeCycleOverview } from '@/lib/cycleOverview';
 import { getFinancialCycle } from '@/lib/financialCycles';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { AuthControls } from '@/components/AuthControls';
+import { useCloudAuth } from '@/hooks/useCloudAuth';
 
 const Index = () => {
   const [showMonthly, setShowMonthly] = useState(false);
@@ -45,6 +47,11 @@ const Index = () => {
   const cyclePlanning = useCyclePlanning(cycle.id);
   const domain = useExpenseDomain();
   const { mutate: mutateDomain } = domain;
+  const syncTriggerKey = useMemo(
+    () => JSON.stringify([cycle.id, cyclePlanning.plans, domain.state]),
+    [cycle.id, cyclePlanning.plans, domain.state]
+  );
+  const cloudAuth = useCloudAuth(syncTriggerKey);
   const todayCycle = getFinancialCycle().id;
   useEffect(() => { mutateDomain(state => generateCycleCommitments(state, cycle.id, todayCycle)); }, [mutateDomain, cycle.id, todayCycle, domain.state]);
   const navigateCycle = (direction: -1 | 1) => { setExpenseEditor(null); navigate(direction); };
@@ -136,6 +143,7 @@ const Index = () => {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <AuthControls auth={cloudAuth} />
               <ThemeToggle />
               <BackupControls exportBackup={exportBackup} restoreBackup={restoreBackup} />
               <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Mais opções" title="Mais opções"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => setShowMonthly(true)}><History className="mr-2 h-4 w-4" />Controle mensal anterior</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
