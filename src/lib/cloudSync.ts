@@ -36,6 +36,7 @@ export function clearLocalFinanceSession(): void {
   localStorage.removeItem(PLANNING_STORAGE_KEY);
   localStorage.removeItem(EXPENSE_DOMAIN_STORAGE_KEY);
   localStorage.removeItem('dindin-onboarding-done-v1');
+  localStorage.removeItem('dindin-tour-done-v1');
 }
 
 export function applyCloudSnapshotToLocalStorage(snapshot: CloudFinanceSnapshot): void {

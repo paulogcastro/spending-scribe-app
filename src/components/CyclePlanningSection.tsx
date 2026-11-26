@@ -126,7 +126,7 @@ export function CyclePlanningSection({
     <section className="space-y-4" aria-label="Planejamento do ciclo">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Card: Renda do ciclo */}
-        <div className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-card">
+        <div data-tour="income-card" className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-card">
           <div className="mb-4 flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
               <Wallet className="h-4 w-4 text-primary" />
@@ -290,7 +290,7 @@ export function CyclePlanningSection({
         </div>
 
         {/* Card: Meta de investimento vs Realizado */}
-        <div className="flex min-w-0 flex-col justify-between gap-4 rounded-2xl border border-border bg-card p-5 shadow-card">
+        <div data-tour="investment-card" className="flex min-w-0 flex-col justify-between gap-4 rounded-2xl border border-border bg-card p-5 shadow-card">
           <div className="space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="flex items-center gap-2.5">
@@ -415,7 +415,7 @@ export function CyclePlanningSection({
       </div>
 
       {/* Card: Distribuição do orçamento com barra segmentada + Resumo do fluxo da renda */}
-      <div className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-card">
+      <div data-tour="distribution-card" className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-card">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
