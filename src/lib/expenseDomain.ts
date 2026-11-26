@@ -423,6 +423,39 @@ export function generateCycleCommitments(state: ExpenseDomainState, selected: st
   if (!additions.length) return state;
   return parseExpenseDomainState(JSON.stringify({ ...state, cycles: { ...state.cycles, [selected]: [...existing, ...additions] } }));
 }
+
+export function materializePendingCommitments(
+  state: ExpenseDomainState,
+  selected: string,
+  todayCycle = getFinancialCycle().id
+): ExpenseDomainState {
+  createFinancialCycle(selected);
+  createFinancialCycle(todayCycle);
+  const target = selected <= todayCycle ? selected : todayCycle;
+  const definitions = [...Object.values(state.recurringDefinitions), ...Object.values(state.installmentDefinitions)];
+  if (!definitions.length) return state;
+
+  let earliest = target;
+  for (const def of definitions) {
+    const start = startCycle(def);
+    if (start < earliest) earliest = start;
+  }
+
+  const maxLookback = 24;
+  let current = earliest;
+  if (cycleDistance(earliest, target) > maxLookback) {
+    let stepped = target;
+    for (let i = 0; i < maxLookback; i++) stepped = adjacentCycle(stepped, -1).id;
+    current = stepped;
+  }
+
+  let next = state;
+  while (current <= target) {
+    next = generateCycleCommitments(next, current, todayCycle);
+    current = adjacentCycle(current, 1).id;
+  }
+  return next;
+}
 export function futureCommitmentCycles(state: ExpenseDomainState, after: string, count = 12) {
   const result: { cycleId: string; items: ExpenseOccurrence[] }[] = [];
   let selected = after;

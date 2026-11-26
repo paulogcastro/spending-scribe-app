@@ -13,11 +13,11 @@ import { SettingsSection } from '@/components/SettingsSection';
 import { CycleExpenseDialog, type CycleExpenseEditor } from '@/components/CycleExpenseDialog';
 import { useExpenseDomain } from '@/hooks/useExpenseDomain';
 import {
-  generateCycleCommitments,
   getBudgetGroupsMap,
   getOrderedBudgetGroups,
   isExpenseNatureCompatible,
   localExpenseDate,
+  materializePendingCommitments,
   type ManualExpenseGroup,
   type ExpenseOccurrence,
 } from '@/lib/expenseDomain';
@@ -28,7 +28,9 @@ import { AuthControls } from '@/components/AuthControls';
 import { AuthGateScreen } from '@/components/AuthGateScreen';
 import { BrandLogo } from '@/components/BrandLogo';
 import { InstallAppButton } from '@/components/InstallAppButton';
+import { OnboardingDialog, ONBOARDING_STORAGE_KEY } from '@/components/OnboardingDialog';
 import { useCloudAuth } from '@/hooks/useCloudAuth';
+import { hasMeaningfulLocalData, readLocalFinanceSnapshot } from '@/lib/cloudSync';
 
 type MainTab = 'cycle-expenses' | 'planning' | 'settings';
 
@@ -41,6 +43,15 @@ const navItems: { id: MainTab; label: string; icon: typeof Receipt }[] = [
 const Index = () => {
   const [activeTab, setActiveTab] = useState<MainTab>('cycle-expenses');
   const [expenseEditor, setExpenseEditor] = useState<CycleExpenseEditor | null>(null);
+  const [onboardingOpen, setOnboardingOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (localStorage.getItem(ONBOARDING_STORAGE_KEY) === '1') return false;
+    try {
+      return !hasMeaningfulLocalData(readLocalFinanceSnapshot());
+    } catch {
+      return false;
+    }
+  });
   const { cycle, navigate } = useFinancialCycles();
   const periods = financialPeriods(cycle.id);
   const cyclePlanning = useCyclePlanning(cycle.id);
@@ -52,7 +63,7 @@ const Index = () => {
   );
   const cloudAuth = useCloudAuth(syncTriggerKey);
   const todayCycle = getFinancialCycle().id;
-  useEffect(() => { mutateDomain(state => generateCycleCommitments(state, cycle.id, todayCycle)); }, [mutateDomain, cycle.id, todayCycle, domain.state]);
+  useEffect(() => { mutateDomain(state => materializePendingCommitments(state, cycle.id, todayCycle)); }, [mutateDomain, cycle.id, todayCycle, domain.state]);
 
   const navigateCycle = (direction: -1 | 1) => { setExpenseEditor(null); navigate(direction); };
   const startExpense = (group: ManualExpenseGroup = 'diarias') => setExpenseEditor({ group, input: { description: '', amount: 0, categoryId: '', paymentMethodId: '', date: localExpenseDate(), note: '' } });
@@ -187,6 +198,7 @@ const Index = () => {
             planningPlans={cyclePlanning.plans}
             exportBackup={exportBackup}
             restoreBackup={restoreBackup}
+            onOpenOnboarding={() => setOnboardingOpen(true)}
           />
         )}
       </main>
@@ -225,6 +237,12 @@ const Index = () => {
         cycleId={cycle.id}
         periodLabel={periods.cycle.label}
         domain={domain}
+      />
+
+      <OnboardingDialog
+        open={onboardingOpen && !cloudAuth.pendingMigration}
+        onClose={() => setOnboardingOpen(false)}
+        onStartPlanning={() => setActiveTab('planning')}
       />
     </div>
   );

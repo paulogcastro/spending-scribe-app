@@ -4,7 +4,9 @@ import { toast } from 'sonner';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import {
   applyCloudSnapshotToLocalStorage,
+  clearLocalFinanceSession,
   fetchCloudFinanceData,
+  fetchCloudUpdatedAt,
   hasMeaningfulLocalData,
   readLocalFinanceSnapshot,
   saveCloudFinanceData,
@@ -13,6 +15,8 @@ import {
 export type CloudSyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 
 const HYDRATED_KEY = 'dindin-cloud-hydrated-user';
+const LAST_UPDATED_KEY = 'dindin-cloud-last-updated-at';
+const LAST_USER_KEY = 'dindin-cloud-last-user-id';
 
 export function useCloudAuth(syncTriggerKey: string) {
   const [user, setUser] = useState<User | null>(null);
@@ -21,9 +25,27 @@ export function useCloudAuth(syncTriggerKey: string) {
   const [pendingMigration, setPendingMigration] = useState(false);
   const debounceRef = useRef<number | null>(null);
   const readyToPushRef = useRef(false);
+  const lastUpdatedRef = useRef<string | null>(
+    typeof window !== 'undefined' ? sessionStorage.getItem(LAST_UPDATED_KEY) : null
+  );
+  const lastFocusCheckRef = useRef(0);
+
+  const recordUpdatedAt = useCallback((value?: string | null) => {
+    lastUpdatedRef.current = value ?? null;
+    if (value) sessionStorage.setItem(LAST_UPDATED_KEY, value);
+    else sessionStorage.removeItem(LAST_UPDATED_KEY);
+  }, []);
 
   const handleSignedInUser = useCallback(async (signedUser: User) => {
     try {
+      const lastUserId = localStorage.getItem(LAST_USER_KEY);
+      if (lastUserId && lastUserId !== signedUser.id) {
+        clearLocalFinanceSession();
+        sessionStorage.removeItem(HYDRATED_KEY);
+        recordUpdatedAt(null);
+      }
+      localStorage.setItem(LAST_USER_KEY, signedUser.id);
+
       const cloud = await fetchCloudFinanceData(signedUser.id);
       if (cloud && (cloud.cycleState || cloud.cyclePlanning || cloud.expenseDomain)) {
         const alreadyHydrated = sessionStorage.getItem(HYDRATED_KEY) === signedUser.id;
@@ -32,20 +54,32 @@ export function useCloudAuth(syncTriggerKey: string) {
         if (!alreadyHydrated) {
           applyCloudSnapshotToLocalStorage(cloud);
           sessionStorage.setItem(HYDRATED_KEY, signedUser.id);
+          recordUpdatedAt(cloud.updatedAt ?? null);
           window.location.reload();
+        } else if (!lastUpdatedRef.current && cloud.updatedAt) {
+          recordUpdatedAt(cloud.updatedAt);
         }
         return;
       }
 
       const localSnapshot = readLocalFinanceSnapshot();
-      if (hasMeaningfulLocalData(localSnapshot)) {
+      if (!lastUserId && hasMeaningfulLocalData(localSnapshot)) {
         setPendingMigration(true);
         readyToPushRef.current = false;
       } else {
-        await saveCloudFinanceData(signedUser.id, localSnapshot);
+        const alreadyHydrated = sessionStorage.getItem(HYDRATED_KEY) === signedUser.id;
+        if (!alreadyHydrated) {
+          clearLocalFinanceSession();
+        }
+        const cleanSnapshot = readLocalFinanceSnapshot();
+        const result = await saveCloudFinanceData(signedUser.id, cleanSnapshot);
         sessionStorage.setItem(HYDRATED_KEY, signedUser.id);
+        if (!result.conflict) recordUpdatedAt(result.updatedAt);
         readyToPushRef.current = true;
         setSyncStatus('synced');
+        if (!alreadyHydrated) {
+          window.location.reload();
+        }
       }
     } catch (err) {
       console.error('Cloud sync error:', err);
@@ -53,7 +87,7 @@ export function useCloudAuth(syncTriggerKey: string) {
       const detail = err instanceof Error ? err.message : (typeof err === 'object' && err && 'message' in err ? String((err as { message: unknown }).message) : 'Erro desconhecido');
       toast.error(`Erro ao sincronizar com a nuvem: ${detail}`);
     }
-  }, []);
+  }, [recordUpdatedAt]);
 
   useEffect(() => {
     if (!supabase) {
@@ -76,7 +110,10 @@ export function useCloudAuth(syncTriggerKey: string) {
       if (event === 'SIGNED_IN' && nextUser) {
         void handleSignedInUser(nextUser);
       } else if (event === 'SIGNED_OUT') {
+        clearLocalFinanceSession();
+        localStorage.removeItem(LAST_USER_KEY);
         sessionStorage.removeItem(HYDRATED_KEY);
+        recordUpdatedAt(null);
         readyToPushRef.current = false;
         setPendingMigration(false);
         setSyncStatus('idle');
@@ -87,9 +124,48 @@ export function useCloudAuth(syncTriggerKey: string) {
       active = false;
       sub.subscription.unsubscribe();
     };
-  }, [handleSignedInUser]);
+  }, [handleSignedInUser, recordUpdatedAt]);
 
-  // Auto-sync local mutations to Supabase when authenticated and hydrated
+  // Auto-pull newer cloud changes when returning to tab/app (PC <-> Mobile sync)
+  useEffect(() => {
+    if (!supabase || !user || pendingMigration) return;
+
+    const checkForUpdates = async () => {
+      if (!readyToPushRef.current) return;
+      const now = Date.now();
+      if (now - lastFocusCheckRef.current < 10_000) return;
+      lastFocusCheckRef.current = now;
+
+      try {
+        const serverUpdatedAt = await fetchCloudUpdatedAt(user.id);
+        if (serverUpdatedAt && lastUpdatedRef.current && serverUpdatedAt > lastUpdatedRef.current) {
+          const latest = await fetchCloudFinanceData(user.id);
+          if (latest) {
+            applyCloudSnapshotToLocalStorage(latest);
+            recordUpdatedAt(latest.updatedAt ?? serverUpdatedAt);
+            toast.info('Dados atualizados a partir de outro dispositivo.');
+            window.setTimeout(() => window.location.reload(), 600);
+          }
+        }
+      } catch {
+        // Silent fail on background focus check
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void checkForUpdates();
+    };
+    const onFocus = () => void checkForUpdates();
+
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [user, pendingMigration, recordUpdatedAt]);
+
+  // Auto-sync local mutations to Supabase when authenticated and hydrated (with conflict protection)
   useEffect(() => {
     if (!supabase || !user || !readyToPushRef.current || pendingMigration) return;
 
@@ -98,7 +174,15 @@ export function useCloudAuth(syncTriggerKey: string) {
     debounceRef.current = window.setTimeout(async () => {
       try {
         const snapshot = readLocalFinanceSnapshot();
-        await saveCloudFinanceData(user.id, snapshot);
+        const result = await saveCloudFinanceData(user.id, snapshot, lastUpdatedRef.current);
+        if (result.conflict) {
+          applyCloudSnapshotToLocalStorage(result.latest);
+          recordUpdatedAt(result.latest.updatedAt ?? null);
+          toast.warning('Encontramos uma alteração mais recente feita em outro dispositivo. Atualizando...');
+          window.setTimeout(() => window.location.reload(), 900);
+          return;
+        }
+        recordUpdatedAt(result.updatedAt);
         setSyncStatus('synced');
       } catch {
         setSyncStatus('error');
@@ -108,7 +192,7 @@ export function useCloudAuth(syncTriggerKey: string) {
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
-  }, [user, syncTriggerKey, pendingMigration]);
+  }, [user, syncTriggerKey, pendingMigration, recordUpdatedAt]);
 
   const signIn = async (email: string, password: string) => {
     if (!supabase) throw new Error('Supabase não configurado.');
@@ -143,8 +227,9 @@ export function useCloudAuth(syncTriggerKey: string) {
     try {
       setSyncStatus('syncing');
       const localSnapshot = readLocalFinanceSnapshot();
-      await saveCloudFinanceData(user.id, localSnapshot);
+      const result = await saveCloudFinanceData(user.id, localSnapshot);
       sessionStorage.setItem(HYDRATED_KEY, user.id);
+      if (!result.conflict) recordUpdatedAt(result.updatedAt);
       readyToPushRef.current = true;
       setPendingMigration(false);
       setSyncStatus('synced');
@@ -159,8 +244,9 @@ export function useCloudAuth(syncTriggerKey: string) {
     if (!user) return;
     try {
       setSyncStatus('syncing');
-      await saveCloudFinanceData(user.id, { cycleState: null, cyclePlanning: null, expenseDomain: null });
+      const result = await saveCloudFinanceData(user.id, { cycleState: null, cyclePlanning: null, expenseDomain: null });
       sessionStorage.setItem(HYDRATED_KEY, user.id);
+      if (!result.conflict) recordUpdatedAt(result.updatedAt);
       readyToPushRef.current = true;
       setPendingMigration(false);
       setSyncStatus('synced');
