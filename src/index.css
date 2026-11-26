@@ -151,8 +151,8 @@
 }
 
 @layer components {
-  .cycle-tabs { @apply flex h-12 w-full justify-start gap-6 rounded-none border-b border-border bg-transparent p-0; }
-  .cycle-tabs > [role="tab"] { @apply h-full rounded-none border-b-2 border-transparent px-1 text-muted-foreground shadow-none; }
+  .cycle-tabs { @apply grid h-12 w-full grid-cols-3 rounded-none border-b border-border bg-transparent p-0 sm:flex sm:justify-start sm:gap-6; }
+  .cycle-tabs > [role="tab"] { @apply h-full justify-center rounded-none border-b-2 border-transparent px-1 text-xs text-muted-foreground shadow-none sm:px-2 sm:text-sm; }
   .cycle-tabs > [role="tab"][data-state="active"] { @apply border-primary bg-transparent text-primary shadow-none; }
   .finance-form { @apply grid grid-cols-1 gap-4 sm:grid-cols-2; }
   .finance-form > div { @apply min-w-0; }

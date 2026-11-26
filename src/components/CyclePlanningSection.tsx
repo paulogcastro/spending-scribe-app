@@ -484,24 +484,26 @@ export function CyclePlanningSection({
                     <span className={`h-2 w-2 rounded-full ${styles.dotClass}`} />
                     {group.name}
                   </span>
-                  <div>
-                    <span className="mb-1 block text-xs text-muted-foreground sm:hidden">Percentual (%)</span>
-                    <PercentInput
-                      value={pct}
-                      disabled={readOnly}
-                      ariaLabel={`Percentual de ${group.name}`}
-                      onCommit={val => mutate(plan => setDistributionPercent(plan, group.id, val))}
-                    />
-                  </div>
-                  <div>
-                    <span className="mb-1 block text-xs text-muted-foreground sm:hidden">Limite no ciclo (R$)</span>
-                    <CurrencyInput
-                      aria-label={`Limite em reais de ${group.name}`}
-                      value={amt}
-                      onChange={amount => mutate(plan => setDistributionAmount(plan, group.id, amount))}
-                      className="h-11 text-sm"
-                      disabled={readOnly}
-                    />
+                  <div className="grid grid-cols-2 gap-2.5 sm:contents">
+                    <div>
+                      <span className="mb-1 block text-xs text-muted-foreground sm:hidden">Percentual (%)</span>
+                      <PercentInput
+                        value={pct}
+                        disabled={readOnly}
+                        ariaLabel={`Percentual de ${group.name}`}
+                        onCommit={val => mutate(plan => setDistributionPercent(plan, group.id, val))}
+                      />
+                    </div>
+                    <div>
+                      <span className="mb-1 block text-xs text-muted-foreground sm:hidden">Limite no ciclo (R$)</span>
+                      <CurrencyInput
+                        aria-label={`Limite em reais de ${group.name}`}
+                        value={amt}
+                        onChange={amount => mutate(plan => setDistributionAmount(plan, group.id, amount))}
+                        className="h-11 text-sm"
+                        disabled={readOnly}
+                      />
+                    </div>
                   </div>
                 </div>
               );

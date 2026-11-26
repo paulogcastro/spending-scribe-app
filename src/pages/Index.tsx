@@ -75,23 +75,23 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
-        <div className="container py-3.5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+        <div className="container py-3 sm:py-3.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
               <BrandLogo size="md" />
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-base font-bold tracking-tight sm:text-lg">DinDin Flow</h1>
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                  <h1 className="truncate text-base font-bold tracking-tight sm:text-lg">DinDin Flow</h1>
+                  <span className="hidden rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary min-[420px]:inline-flex">
                     Por ciclos
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground sm:text-sm">
+                <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
                   Controle de gastos pessoais
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <InstallAppButton />
               <AuthControls auth={cloudAuth} />
               <ThemeToggle />
@@ -100,7 +100,7 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="container space-y-6 py-6">
+      <main className="container space-y-5 py-4 sm:space-y-6 sm:py-6">
         <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 bg-background/90 py-3 backdrop-blur-sm">
           <CycleSelector cycle={cycle} onNavigate={navigateCycle} />
           <Button className="h-11 w-full gap-2 rounded-xl shadow-sm sm:w-auto" disabled={domain.readOnly} onClick={() => startExpense()}>
