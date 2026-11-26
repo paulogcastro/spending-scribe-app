@@ -48,18 +48,18 @@ test('meta total de investimento = meta-base + soma integral das rendas extras',
   plan = addExtraIncome(plan, { description: 'Freela', amount: 500 });
   plan = addExtraIncome(plan, { description: 'Venda', amount: 300.5 });
   assert.equal(extraIncomeTotal(plan), 800.5);
-  assert.equal(totalInvestmentGoal(plan), 1800.5);
+  assert.equal(totalInvestmentGoal(plan), 1000);
 });
 
-test('inclusão, edição e exclusão de renda extra atualizam o acréscimo e a meta total', () => {
+test('inclusão, edição e exclusão de renda extra não alteram a meta fixa de investimento', () => {
   let plan = createEmptyPlanning('2026-11-04');
   plan = setPlannedSalary(plan, 6000);
   plan = setInvestmentBaseGoal(plan, 1000);
   plan = addExtraIncome(plan, { description: 'Freela', amount: 500 });
   const id = plan.extraIncomes[0].id;
-  assert.equal(totalInvestmentGoal(plan), 1500);
+  assert.equal(totalInvestmentGoal(plan), 1000);
   plan = updateExtraIncome(plan, id, { amount: 700 });
-  assert.equal(totalInvestmentGoal(plan), 1700);
+  assert.equal(totalInvestmentGoal(plan), 1000);
   plan = updateExtraIncome(plan, id, { description: 'Freela site' });
   assert.equal(plan.extraIncomes[0].description, 'Freela site');
   plan = removeExtraIncome(plan, id);
@@ -230,8 +230,8 @@ test('computePlanning consolida todos os derivados pela mesma fonte de cálculo'
   plan = addExtraIncome(plan, { description: 'Freela', amount: 250 });
   const derived = computePlanning(plan);
   assert.equal(derived.extraIncomeTotal, 250);
-  assert.equal(derived.investmentIncrement, 250);
-  assert.equal(derived.totalInvestmentGoal, 1250);
+  assert.equal(derived.investmentIncrement, 0);
+  assert.equal(derived.totalInvestmentGoal, 1000);
   assert.equal(derived.mainExpenseGoal, 5000);
   assert.equal(derived.subgoals.diarias.percent, 100);
 });

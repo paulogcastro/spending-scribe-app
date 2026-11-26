@@ -50,8 +50,9 @@ test('indicadores usam só o ciclo indexado, suas cinco metas e reserva, sem pro
   assert.equal(summary.expenses, 360);
   assert.equal(summary.mainExpenseGoal, 2400);
   assert.equal(summary.expenseRemaining, 2040);
-  assert.equal(summary.totalInvestmentGoal, 800);
-  assert.equal(summary.balanceAfterReserve, 1840);
+  assert.equal(summary.totalInvestmentGoal, 600);
+  assert.equal(summary.availableToInvest, 2640);
+  assert.equal(summary.balanceAfterReserve, 2040);
   assert.deepEqual(summary.groupTotals, { carro: 0, casa: 300, fixos: 0, parcelados: 0, diarias: 60 });
   assert.equal(summary.subgoals.diarias.amount, 1200);
   assert.equal(summary.pace.daily, 95);

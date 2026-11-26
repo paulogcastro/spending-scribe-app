@@ -61,6 +61,7 @@ export function computeCycleOverview(plan: CyclePlanning, domain: ExpenseDomainS
   const income = roundMoney(plan.receivedSalary + planning.extraIncomeTotal);
   return {
     ...planning, income, expenses, groupTotals,
+    availableToInvest: roundMoney(income - expenses),
     expenseRemaining: roundMoney(planning.mainExpenseGoal - expenses),
     // This is a planned reserve, not an investment realization (not tracked by cycle yet).
     balanceAfterReserve: roundMoney(income - expenses - planning.totalInvestmentGoal),
