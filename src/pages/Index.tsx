@@ -10,7 +10,7 @@ import { FixedExpenseSection } from '@/components/FixedExpenseSection';
 import { InstallmentSection } from '@/components/InstallmentSection';
 import { DailyExpenseSection } from '@/components/DailyExpenseSection';
 import { SummaryPanel } from '@/components/SummaryPanel';
-import { Wallet, Copy, MoreHorizontal, History, ArrowLeft, Receipt, Target, Plus } from 'lucide-react';
+import { Wallet, Copy, MoreHorizontal, History, ArrowLeft, Receipt, Target, Plus, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ExpenseGoals } from '@/types/finance';
@@ -19,9 +19,18 @@ import { BackupControls } from '@/components/BackupControls';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CycleExpenses } from '@/components/CycleExpenses';
 import { CycleOverview } from '@/components/CycleOverview';
+import { SettingsSection } from '@/components/SettingsSection';
 import { CycleExpenseDialog, type CycleExpenseEditor } from '@/components/CycleExpenseDialog';
 import { useExpenseDomain } from '@/hooks/useExpenseDomain';
-import { generateCycleCommitments, localExpenseDate, type ManualExpenseGroup, type ExpenseOccurrence } from '@/lib/expenseDomain';
+import {
+  generateCycleCommitments,
+  getBudgetGroupsMap,
+  getOrderedBudgetGroups,
+  isExpenseNatureCompatible,
+  localExpenseDate,
+  type ManualExpenseGroup,
+  type ExpenseOccurrence,
+} from '@/lib/expenseDomain';
 import { computeCycleOverview } from '@/lib/cycleOverview';
 import { getFinancialCycle } from '@/lib/financialCycles';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -41,7 +50,8 @@ const Index = () => {
   const navigateCycle = (direction: -1 | 1) => { setExpenseEditor(null); navigate(direction); };
   const startExpense = (group: ManualExpenseGroup = 'diarias') => setExpenseEditor({ group, input: { description: '', amount: 0, categoryId: '', paymentMethodId: '', date: localExpenseDate(), note: '' } });
   const editExpense = (item: ExpenseOccurrence) => {
-    if (item.nature !== 'avulso' || (item.group !== 'carro' && item.group !== 'casa' && item.group !== 'diarias')) return;
+    const groupsMap = getBudgetGroupsMap(domain.state);
+    if (item.nature !== 'avulso' || !isExpenseNatureCompatible(item.group, 'avulso', groupsMap)) return;
     setExpenseEditor({ group: item.group, id: item.id, input: { description: item.description, amount: item.amount, categoryId: item.categoryId, paymentMethodId: item.paymentMethodId, date: item.date, note: item.note ?? '' } });
   };
   const cycleInvestmentGoal = cyclePlanning.derived.totalInvestmentGoal;
@@ -139,19 +149,22 @@ const Index = () => {
           <CycleSelector cycle={cycle} onNavigate={navigateCycle} />
           {!showMonthly && <Button className="h-11 w-full gap-2 rounded-xl shadow-sm sm:w-auto" disabled={domain.readOnly} onClick={() => startExpense()}><Plus className="h-4 w-4" />Nova despesa</Button>}
         </div>
-        {!showMonthly ? <>
+        {!showMonthly ? (() => {
+        const overview = computeCycleOverview(cyclePlanning.planning, domain.state);
+        const orderedGroups = getOrderedBudgetGroups(domain.state);
+        return <>
         <CycleOverview planning={cyclePlanning.planning} domain={domain.state} periodLabel={periods.cycle.label} readOnly={cyclePlanning.readOnly || domain.readOnly} />
         <Tabs key="cycle" defaultValue="cycle-expenses" className="space-y-5">
           <TabsList aria-label="Controle por ciclo" className="cycle-tabs">
             <TabsTrigger value="cycle-expenses" className="gap-2"><Receipt className="h-4 w-4" />Despesas</TabsTrigger>
             <TabsTrigger value="planning" className="gap-2"><Target className="h-4 w-4" />Planejamento</TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2"><Settings2 className="h-4 w-4" />Configurações</TabsTrigger>
           </TabsList>
-          <TabsContent value="cycle-expenses"><CycleExpenses key={cycle.id} cycleId={cycle.id} periodLabel={periods.cycle.label} domain={domain} subgoals={cyclePlanning.derived.subgoals} onAdd={startExpense} onEdit={editExpense} /></TabsContent>
-          <TabsContent value="planning">{(() => {
-            const overview = computeCycleOverview(cyclePlanning.planning, domain.state);
-            return <CyclePlanningSection key={cycle.id} cycleId={cycle.id} cyclePlanning={cyclePlanning} availableToInvest={overview.availableToInvest} totalDays={overview.pace.totalDays} />;
-          })()}</TabsContent>
-        </Tabs></> : <section aria-label="Controle mensal anterior" className="space-y-6">
+          <TabsContent value="cycle-expenses"><CycleExpenses key={cycle.id} cycleId={cycle.id} periodLabel={periods.cycle.label} domain={domain} subgoals={overview.subgoals} onAdd={startExpense} onEdit={editExpense} /></TabsContent>
+          <TabsContent value="planning"><CyclePlanningSection key={cycle.id} cycleId={cycle.id} cyclePlanning={cyclePlanning} budgetGroups={orderedGroups} availableToInvest={overview.availableToInvest} totalDays={overview.pace.totalDays} /></TabsContent>
+          <TabsContent value="settings"><SettingsSection domain={domain} planningPlans={cyclePlanning.plans} /></TabsContent>
+        </Tabs></>;
+        })() : <section aria-label="Controle mensal anterior" className="space-y-6">
           <div className="space-y-4">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setShowMonthly(false)}><ArrowLeft className="h-4 w-4" />Voltar ao controle por ciclo</Button>
             <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-semibold">Controle mensal anterior</h2><p className="mt-1 text-sm text-muted-foreground">{periods.monthly.label}</p></div><Button variant="outline" size="sm" onClick={handleCopyToNextMonth} className="gap-2" title="Copiar os registros deste mês para o próximo"><Copy className="h-4 w-4" />Copiar mês</Button></div>

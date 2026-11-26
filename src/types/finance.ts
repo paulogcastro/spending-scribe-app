@@ -195,7 +195,7 @@ export interface ExtraIncome {
 }
 
 // Grupos com percentual editável; Gastos diários é sempre o residual.
-export type BudgetGroup = 'carro' | 'casa' | 'fixos' | 'parcelados';
+export type BudgetGroup = string;
 
 export interface CyclePlanning {
   cycleId: string; // Mesmo identificador do FinancialCycle (YYYY-MM-DD, dia 04)

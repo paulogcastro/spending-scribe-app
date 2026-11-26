@@ -1,65 +1,32 @@
 import { useState } from 'react';
-import { Car, Home, Receipt, Plus, Pencil, Trash2, Repeat2, CreditCard, PieChart } from 'lucide-react';
+import { Plus, Pencil, Trash2, Repeat2, CreditCard, PieChart, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import type { useExpenseDomain } from '@/hooks/useExpenseDomain';
-import { removeManualExpense, plannedCommitments, correctCommitmentOccurrence, type ExpenseOccurrence, type ManualExpenseGroup } from '@/lib/expenseDomain';
+import {
+  cancelCommitmentFromCycle,
+  getBudgetGroupsMap,
+  getOrderedBudgetGroups,
+  isExpenseNatureCompatible,
+  plannedCommitments,
+  removeCommitmentOccurrenceInCycle,
+  removeManualExpense,
+  updateCommitmentFromCycle,
+  updateCommitmentOccurrenceInCycle,
+  type BudgetGroupRecord,
+  type ExpenseOccurrence,
+  type ManualExpenseGroup,
+} from '@/lib/expenseDomain';
 import { computeCategoryBreakdown } from '@/lib/cycleOverview';
-import type { BudgetGroup } from '@/lib/cyclePlanning';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { ExpenseCatalogs } from '@/components/ExpenseCatalogs';
 import { CycleCommitments } from '@/components/CycleCommitments';
+import { getGroupColorStyles, getGroupIcon } from '@/components/budgetGroupStyles';
 import { getFinancialCycle } from '@/lib/financialCycles';
-
-const areas = [
-  {
-    group: 'casa',
-    label: 'Casa',
-    icon: Home,
-    cardClass: 'group-card-casa',
-    badgeClass: 'bg-warning/15 text-warning',
-    barClass: 'bg-warning',
-    spanClass: '',
-  },
-  {
-    group: 'carro',
-    label: 'Carro',
-    icon: Car,
-    cardClass: 'group-card-carro',
-    badgeClass: 'bg-category-transport/15 text-category-transport',
-    barClass: 'bg-category-transport',
-    spanClass: '',
-  },
-  {
-    group: 'fixos',
-    label: 'Gastos fixos',
-    icon: Repeat2,
-    cardClass: 'group-card-fixos',
-    badgeClass: 'bg-category-entertainment/15 text-category-entertainment',
-    barClass: 'bg-category-entertainment',
-    spanClass: '',
-  },
-  {
-    group: 'parcelados',
-    label: 'Parcelados',
-    icon: CreditCard,
-    cardClass: 'group-card-parcelados',
-    badgeClass: 'bg-category-shopping/15 text-category-shopping',
-    barClass: 'bg-category-shopping',
-    spanClass: '',
-  },
-  {
-    group: 'diarias',
-    label: 'Gastos diários',
-    icon: Receipt,
-    cardClass: 'group-card-diarias',
-    badgeClass: 'bg-destructive/15 text-destructive',
-    barClass: 'bg-destructive',
-    spanClass: 'lg:col-span-2',
-  },
-] as const;
 
 const donutPalette = [
   { stroke: 'hsl(var(--primary))', dot: 'bg-primary' },
@@ -72,6 +39,16 @@ const donutPalette = [
   { stroke: 'hsl(var(--category-other))', dot: 'bg-category-other' },
 ] as const;
 
+interface CommitmentEditState {
+  item: ExpenseOccurrence;
+  scope: 'single' | 'future';
+  description: string;
+  amount: number;
+  categoryId: string;
+  paymentMethodId: string;
+  note: string;
+}
+
 export function CycleExpenses({
   cycleId,
   periodLabel,
@@ -83,12 +60,13 @@ export function CycleExpenses({
   cycleId: string;
   periodLabel: string;
   domain: ReturnType<typeof useExpenseDomain>;
-  subgoals?: Record<BudgetGroup, { percent: number; amount: number }>;
+  subgoals?: Record<string, { percent: number; amount: number }>;
   onAdd: (group: ManualExpenseGroup) => void;
   onEdit: (item: ExpenseOccurrence) => void;
 }) {
-  const [pending, setPending] = useState<ExpenseOccurrence | null>(null);
-  const [correction, setCorrection] = useState<{ item: ExpenseOccurrence; amount: number } | null>(null);
+  const [pendingManual, setPendingManual] = useState<ExpenseOccurrence | null>(null);
+  const [pendingCommitmentDelete, setPendingCommitmentDelete] = useState<ExpenseOccurrence | null>(null);
+  const [commitmentEdit, setCommitmentEdit] = useState<CommitmentEditState | null>(null);
   const [chartOpen, setChartOpen] = useState(false);
   const [commitmentsOpen, setCommitmentsOpen] = useState(false);
 
@@ -97,8 +75,28 @@ export function CycleExpenses({
   const projected = cycleId > todayCycle
     ? plannedCommitments(domain.state, cycleId).filter(item => !realized.some(value => value.definitionId === item.definitionId))
     : [];
+  const allItems = [...realized, ...projected];
   const categoryBreakdown = computeCategoryBreakdown(domain.state, cycleId);
   const categoryTotal = categoryBreakdown.reduce((sum, item) => sum + item.amount, 0);
+
+  const groupsMap = getBudgetGroupsMap(domain.state);
+  const activeOrdered = getOrderedBudgetGroups(domain.state);
+  const inactiveWithItems: BudgetGroupRecord[] = Object.values(groupsMap).filter(
+    g => !g.active && allItems.some(item => item.group === g.id)
+  );
+  const visibleGroups = [...activeOrdered, ...inactiveWithItems];
+
+  const openCommitmentEdit = (item: ExpenseOccurrence) => {
+    setCommitmentEdit({
+      item,
+      scope: 'single',
+      description: item.description,
+      amount: item.amount,
+      categoryId: item.categoryId,
+      paymentMethodId: item.paymentMethodId,
+      note: item.note ?? '',
+    });
+  };
 
   return (
     <section aria-label="Despesas do ciclo" className="space-y-4">
@@ -126,34 +124,40 @@ export function CycleExpenses({
         </div>
       )}
 
-      {/* Cards por Grupo Orçamentário (2 colunas no desktop, com cores sutis por grupo) */}
+      {/* Cards por Grupo Orçamentário (dinâmicos e ordenados conforme Configurações) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {areas.map(({ group, label, icon: Icon, cardClass, badgeClass, barClass, spanClass }) => {
-          const items = [...realized, ...projected]
-            .filter(item => item.group === group)
+        {visibleGroups.map((groupRecord, index) => {
+          const Icon = getGroupIcon(groupRecord.icon);
+          const styles = getGroupColorStyles(groupRecord.color);
+          const items = allItems
+            .filter(item => item.group === groupRecord.id)
             .sort((a, b) => b.date.localeCompare(a.date));
-          const total = realized.filter(item => item.group === group).reduce((sum, value) => sum + value.amount, 0);
-          const forecast = projected.filter(item => item.group === group).reduce((sum, value) => sum + value.amount, 0);
-          const groupGoal = subgoals?.[group]?.amount ?? 0;
+          const total = realized.filter(item => item.group === groupRecord.id).reduce((sum, value) => sum + value.amount, 0);
+          const forecast = projected.filter(item => item.group === groupRecord.id).reduce((sum, value) => sum + value.amount, 0);
+          const groupGoal = subgoals?.[groupRecord.id]?.amount ?? 0;
           const groupRatio = groupGoal > 0 ? Math.min(100, Math.round((total / groupGoal) * 100)) : 0;
           const isOverGroupGoal = groupGoal > 0 && total > groupGoal;
           const isNearGroupGoal = !isOverGroupGoal && groupGoal > 0 && groupRatio >= 85;
-          const isManualGroup = group === 'carro' || group === 'casa' || group === 'diarias';
+          const acceptsManual = groupRecord.active && isExpenseNatureCompatible(groupRecord.id, 'avulso', groupsMap);
+          const isOddLast = visibleGroups.length % 2 === 1 && index === visibleGroups.length - 1;
 
           return (
             <section
-              key={group}
-              aria-label={`${label} do ciclo`}
-              className={`overflow-hidden rounded-2xl border shadow-card transition-shadow hover:shadow-card-hover ${cardClass} ${spanClass}`}
+              key={groupRecord.id}
+              aria-label={`${groupRecord.name} do ciclo`}
+              className={`overflow-hidden rounded-2xl border shadow-card transition-shadow hover:shadow-card-hover ${styles.cardClass} ${isOddLast ? 'lg:col-span-2' : ''}`}
             >
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-5 py-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm ${badgeClass}`}>
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm ${styles.badgeClass}`}>
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-sm font-bold">{label}</h3>
+                      <h3 className="text-sm font-bold">{groupRecord.name}</h3>
+                      {!groupRecord.active && (
+                        <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">Inativo</span>
+                      )}
                       {forecast > 0 && (
                         <span className="rounded-full bg-card/80 px-2 py-0.5 text-xs font-medium text-muted-foreground tabular-nums">
                           Previsto: {formatCurrency(forecast)}
@@ -165,7 +169,7 @@ export function CycleExpenses({
                         <div className="h-1.5 w-20 overflow-hidden rounded-full bg-secondary/80">
                           <div
                             className={`h-full rounded-full ${
-                              isOverGroupGoal ? 'bg-destructive' : isNearGroupGoal ? 'bg-warning' : barClass
+                              isOverGroupGoal ? 'bg-destructive' : isNearGroupGoal ? 'bg-warning' : styles.barClass
                             }`}
                             style={{ width: `${groupRatio}%` }}
                           />
@@ -179,36 +183,38 @@ export function CycleExpenses({
                   </div>
                 </div>
 
-                {isManualGroup ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-card/85 hover:bg-card"
-                    disabled={domain.readOnly}
-                    onClick={() => onAdd(group)}
-                    aria-label={`Adicionar despesa em ${label}`}
-                  >
-                    <Plus className="mr-1 h-4 w-4" />
-                    Adicionar
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-card/85 hover:bg-card"
-                    disabled={domain.readOnly}
-                    onClick={() => setCommitmentsOpen(true)}
-                    aria-label={`Gerenciar ${label}`}
-                  >
-                    <Plus className="mr-1 h-4 w-4" />
-                    {group === 'fixos' ? 'Recorrente' : 'Parcelamento'}
-                  </Button>
+                {groupRecord.active && (
+                  acceptsManual ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-card/85 hover:bg-card"
+                      disabled={domain.readOnly}
+                      onClick={() => onAdd(groupRecord.id)}
+                      aria-label={`Adicionar despesa em ${groupRecord.name}`}
+                    >
+                      <Plus className="mr-1 h-4 w-4" />
+                      Adicionar
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-card/85 hover:bg-card"
+                      disabled={domain.readOnly}
+                      onClick={() => setCommitmentsOpen(true)}
+                      aria-label={`Gerenciar ${groupRecord.name}`}
+                    >
+                      <Plus className="mr-1 h-4 w-4" />
+                      {groupRecord.allowedNatures.includes('recorrente') ? 'Recorrente' : 'Parcelamento'}
+                    </Button>
+                  )
                 )}
               </div>
 
               {items.length === 0 ? (
                 <div className="px-5 py-6 text-center text-xs text-muted-foreground">
-                  Nenhum lançamento registrado em <strong className="font-medium text-foreground">{label}</strong> neste ciclo.
+                  Nenhum lançamento registrado em <strong className="font-medium text-foreground">{groupRecord.name}</strong> neste ciclo.
                 </div>
               ) : (
                 <ul className="divide-y divide-border/60">
@@ -282,25 +288,26 @@ export function CycleExpenses({
                             aria-label={`Editar despesa ${item.description}`}
                             disabled={domain.readOnly || isProjected}
                             onClick={() => {
-                              if (item.nature !== 'avulso') setCorrection({ item, amount: item.amount });
-                              else if (isManualGroup) onEdit(item);
+                              if (item.nature === 'avulso') onEdit(item);
+                              else openCommitmentEdit(item);
                             }}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          {item.nature === 'avulso' && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-10 w-10"
-                              title={`Excluir ${item.description}`}
-                              aria-label={`Excluir despesa ${item.description}`}
-                              disabled={domain.readOnly}
-                              onClick={() => setPending(item)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10"
+                            title={`Excluir ${item.description}`}
+                            aria-label={`Excluir despesa ${item.description}`}
+                            disabled={domain.readOnly || isProjected}
+                            onClick={() => {
+                              if (item.nature === 'avulso') setPendingManual(item);
+                              else setPendingCommitmentDelete(item);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </div>
                       </li>
                     );
@@ -393,48 +400,198 @@ export function CycleExpenses({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={correction !== null} onOpenChange={open => { if (!open) setCorrection(null); }}>
-        <DialogContent>
+      {/* Modal: Editar Recorrente ou Parcelado com escolha de escopo */}
+      <Dialog open={commitmentEdit !== null} onOpenChange={open => { if (!open) setCommitmentEdit(null); }}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Corrigir valor neste ciclo</DialogTitle>
-            <DialogDescription>{correction?.item.description} · {periodLabel}. O valor dos outros ciclos permanece inalterado.</DialogDescription>
+            <DialogTitle>
+              Editar {commitmentEdit?.item.nature === 'parcelado' ? 'parcelamento' : 'recorrência'}
+            </DialogTitle>
+            <DialogDescription>
+              {commitmentEdit?.item.description} · {periodLabel}
+            </DialogDescription>
           </DialogHeader>
-          {correction && (
+          {commitmentEdit && (
             <form
               className="space-y-4"
               onSubmit={event => {
                 event.preventDefault();
-                if (domain.mutate(state => correctCommitmentOccurrence(state, cycleId, correction.item.id, correction.amount))) {
-                  setCorrection(null);
-                }
+                const { item, scope, description, amount, categoryId, paymentMethodId, note } = commitmentEdit;
+                const updates = { description, amount, categoryId, paymentMethodId, note: note || undefined };
+                const ok = domain.mutate(state => {
+                  if (scope === 'single' || !item.definitionId) {
+                    return updateCommitmentOccurrenceInCycle(state, cycleId, item.id, updates);
+                  }
+                  const kind = item.nature === 'parcelado' ? 'parcelado' : 'recorrente';
+                  return updateCommitmentFromCycle(state, kind, item.definitionId, cycleId, updates);
+                });
+                if (ok) setCommitmentEdit(null);
               }}
             >
-              <div>
-                <Label htmlFor="occurrence-amount">Valor desta ocorrência</Label>
-                <CurrencyInput id="occurrence-amount" value={correction.amount} onChange={amount => setCorrection({ ...correction, amount })} required />
+              <div className="space-y-2">
+                <Label>Aplicar alteração em</Label>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setCommitmentEdit({ ...commitmentEdit, scope: 'single' })}
+                    className={`rounded-xl border p-3 text-left text-xs transition ${
+                      commitmentEdit.scope === 'single'
+                        ? 'border-primary bg-primary/10 font-semibold text-primary'
+                        : 'border-border bg-secondary/40 text-muted-foreground'
+                    }`}
+                  >
+                    Apenas neste ciclo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCommitmentEdit({ ...commitmentEdit, scope: 'future' })}
+                    className={`rounded-xl border p-3 text-left text-xs transition ${
+                      commitmentEdit.scope === 'future'
+                        ? 'border-primary bg-primary/10 font-semibold text-primary'
+                        : 'border-border bg-secondary/40 text-muted-foreground'
+                    }`}
+                  >
+                    {commitmentEdit.item.nature === 'parcelado'
+                      ? 'Esta e as próximas parcelas'
+                      : 'Este ciclo e os próximos'}
+                  </button>
+                </div>
               </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-comm-desc">Descrição</Label>
+                <Input
+                  id="edit-comm-desc"
+                  required
+                  value={commitmentEdit.description}
+                  onChange={e => setCommitmentEdit({ ...commitmentEdit, description: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-comm-amount">Valor</Label>
+                <CurrencyInput
+                  id="edit-comm-amount"
+                  value={commitmentEdit.amount}
+                  onChange={amount => setCommitmentEdit({ ...commitmentEdit, amount })}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-comm-cat">Categoria</Label>
+                  <Select
+                    value={commitmentEdit.categoryId}
+                    onValueChange={categoryId => setCommitmentEdit({ ...commitmentEdit, categoryId })}
+                  >
+                    <SelectTrigger id="edit-comm-cat"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.values(domain.state.categories)
+                        .filter(c => c.active || c.id === commitmentEdit.item.categoryId)
+                        .map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}{c.active ? '' : ' (inativa)'}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-comm-pay">Forma de pagamento</Label>
+                  <Select
+                    value={commitmentEdit.paymentMethodId}
+                    onValueChange={paymentMethodId => setCommitmentEdit({ ...commitmentEdit, paymentMethodId })}
+                  >
+                    <SelectTrigger id="edit-comm-pay"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.values(domain.state.paymentMethods)
+                        .filter(p => p.active || p.id === commitmentEdit.item.paymentMethodId)
+                        .map(p => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}{p.active ? '' : ' (inativa)'}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-comm-note">Observação (opcional)</Label>
+                <Input
+                  id="edit-comm-note"
+                  value={commitmentEdit.note}
+                  onChange={e => setCommitmentEdit({ ...commitmentEdit, note: e.target.value })}
+                />
+              </div>
+
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setCorrection(null)}>Cancelar</Button>
-                <Button type="submit" disabled={domain.readOnly}>Salvar correção</Button>
+                <Button type="button" variant="outline" onClick={() => setCommitmentEdit(null)}>Cancelar</Button>
+                <Button type="submit" disabled={domain.readOnly}>Salvar alteração</Button>
               </DialogFooter>
             </form>
           )}
         </DialogContent>
       </Dialog>
 
-      <Dialog open={pending !== null} onOpenChange={open => { if (!open) setPending(null); }}>
-        <DialogContent>
+      {/* Modal: Excluir Recorrente ou Parcelado com escolha de escopo */}
+      <Dialog open={pendingCommitmentDelete !== null} onOpenChange={open => { if (!open) setPendingCommitmentDelete(null); }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Excluir despesa?</DialogTitle>
-            <DialogDescription>{pending?.description} · {formatCurrency(pending?.amount ?? 0)}</DialogDescription>
+            <DialogTitle>
+              Excluir {pendingCommitmentDelete?.nature === 'parcelado' ? 'parcelamento' : 'gasto recorrente'}?
+            </DialogTitle>
+            <DialogDescription>
+              {pendingCommitmentDelete?.description} · {formatCurrency(pendingCommitmentDelete?.amount ?? 0)}. Escolha como deseja excluir:
+            </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPending(null)}>Cancelar</Button>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button
+              variant="outline"
+              disabled={domain.readOnly}
+              onClick={() => {
+                if (!pendingCommitmentDelete) return;
+                if (domain.mutate(state => removeCommitmentOccurrenceInCycle(state, cycleId, pendingCommitmentDelete.id))) {
+                  setPendingCommitmentDelete(null);
+                }
+              }}
+            >
+              Excluir apenas deste ciclo
+            </Button>
             <Button
               variant="destructive"
               disabled={domain.readOnly}
               onClick={() => {
-                if (pending && domain.mutate(state => removeManualExpense(state, cycleId, pending.id))) setPending(null);
+                if (!pendingCommitmentDelete?.definitionId) return;
+                const kind = pendingCommitmentDelete.nature === 'parcelado' ? 'parcelado' : 'recorrente';
+                if (domain.mutate(state => cancelCommitmentFromCycle(state, kind, pendingCommitmentDelete.definitionId!, cycleId))) {
+                  setPendingCommitmentDelete(null);
+                }
+              }}
+            >
+              {pendingCommitmentDelete?.nature === 'parcelado'
+                ? 'Excluir esta e todas as próximas parcelas'
+                : 'Excluir deste ciclo e dos próximos'}
+            </Button>
+            <Button variant="ghost" onClick={() => setPendingCommitmentDelete(null)}>
+              Cancelar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Excluir despesa avulsa */}
+      <Dialog open={pendingManual !== null} onOpenChange={open => { if (!open) setPendingManual(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir despesa?</DialogTitle>
+            <DialogDescription>{pendingManual?.description} · {formatCurrency(pendingManual?.amount ?? 0)}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingManual(null)}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              disabled={domain.readOnly}
+              onClick={() => {
+                if (pendingManual && domain.mutate(state => removeManualExpense(state, cycleId, pendingManual.id))) setPendingManual(null);
               }}
             >
               Confirmar exclusão

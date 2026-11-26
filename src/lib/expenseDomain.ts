@@ -5,11 +5,39 @@ import { expenseCategoryLabels } from '../types/finance';
 export const EXPENSE_DOMAIN_STORAGE_KEY = 'spending-scribe-expense-domain-v1';
 const id = z.string().min(1).refine(value => value.trim() === value && !['__proto__', 'constructor', 'prototype'].includes(value));
 const money = z.number().finite().nonnegative();
-const group = z.enum(['carro', 'casa', 'fixos', 'parcelados', 'diarias']);
-export function isExpenseNatureCompatible(group: string, nature: string): boolean {
+const natureSchema = z.enum(['avulso', 'recorrente', 'parcelado']);
+const groupColorSchema = z.enum(['amber', 'blue', 'purple', 'pink', 'red', 'emerald', 'cyan', 'indigo', 'orange']);
+
+export const budgetGroupSchema = z.object({
+  id,
+  name: z.string().trim().min(1),
+  icon: z.string().min(1),
+  color: groupColorSchema,
+  order: z.number().int().nonnegative(),
+  active: z.boolean(),
+  isResidual: z.boolean().optional(),
+  allowedNatures: z.array(natureSchema).min(1),
+}).strict();
+
+export type BudgetGroupRecord = z.infer<typeof budgetGroupSchema>;
+
+export function defaultBudgetGroups(): Record<string, BudgetGroupRecord> {
+  return {
+    casa: { id: 'casa', name: 'Casa', icon: 'home', color: 'amber', order: 0, active: true, allowedNatures: ['avulso', 'recorrente', 'parcelado'] },
+    carro: { id: 'carro', name: 'Carro', icon: 'car', color: 'blue', order: 1, active: true, allowedNatures: ['avulso', 'recorrente', 'parcelado'] },
+    fixos: { id: 'fixos', name: 'Gastos fixos', icon: 'repeat', color: 'purple', order: 2, active: true, allowedNatures: ['recorrente'] },
+    parcelados: { id: 'parcelados', name: 'Parcelados', icon: 'credit-card', color: 'pink', order: 3, active: true, allowedNatures: ['parcelado'] },
+    diarias: { id: 'diarias', name: 'Gastos diários', icon: 'receipt', color: 'red', order: 999, active: true, isResidual: true, allowedNatures: ['avulso'] },
+  };
+}
+
+export function isExpenseNatureCompatible(group: string, nature: string, budgetGroups?: Record<string, BudgetGroupRecord>): boolean {
+  const custom = budgetGroups?.[group];
+  if (custom) return custom.allowedNatures.includes(nature as z.infer<typeof natureSchema>);
   return (group === 'carro' || group === 'casa') ? ['avulso', 'recorrente', 'parcelado'].includes(nature)
     : group === 'fixos' ? nature === 'recorrente' : group === 'parcelados' ? nature === 'parcelado' : group === 'diarias' && nature === 'avulso';
 }
+
 const cycleId = id.refine(value => { try { createFinancialCycle(value); return true; } catch { return false; } });
 const date = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/).refine(value => {
   const [year, month, day] = value.split('-').map(Number);
@@ -18,27 +46,28 @@ const date = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/).refine(value => {
 });
 export const expenseCategorySchema = z.object({ id, name: z.string().trim().min(1), active: z.boolean() }).strict();
 export const paymentMethodSchema = expenseCategorySchema.extend({ type: z.enum(['cartao_credito', 'pix', 'dinheiro', 'outros']) }).strict();
-const common = { id, description: z.string().trim().min(1), amount: money, group, categoryId: id, paymentMethodId: id, note: z.string().optional() };
+const common = { id, description: z.string().trim().min(1), amount: money, group: id, categoryId: id, paymentMethodId: id, note: z.string().optional() };
 const installment = z.object({ number: z.number().int().positive(), total: z.number().int().positive() }).strict().refine(value => value.number <= value.total);
 export const expenseOccurrenceSchema = z.object({
-  ...common, cycleId, nature: z.enum(['avulso', 'recorrente', 'parcelado']), date,
+  ...common, cycleId, nature: natureSchema, date,
   origin: z.enum(['manual', 'importacao', 'notificacao']), definitionId: id.optional(), installment: installment.optional(),
 }).strict().superRefine((value, ctx) => {
   if ((value.nature === 'parcelado') !== (value.installment !== undefined)) ctx.addIssue({ code: 'custom', message: 'Dados de parcela incompatíveis com a natureza.' });
   if (value.nature === 'avulso' && value.definitionId !== undefined) ctx.addIssue({ code: 'custom', message: 'Despesa avulsa não possui definição permanente.' });
   if (value.nature !== 'avulso' && value.definitionId === undefined) ctx.addIssue({ code: 'custom', message: 'Recorrências e parcelas exigem uma definição permanente.' });
-  if (!isExpenseNatureCompatible(value.group, value.nature)) ctx.addIssue({ code: 'custom', message: 'Grupo incompatível com a natureza da despesa.' });
 });
 const status = z.enum(['ativa', 'suspensa', 'concluida']);
 const recurringFields = { ...common, active: z.boolean(), status: status.optional(), startDate: date, endDate: date.optional(), dayOfMonth: z.number().int().min(1).max(31) };
 const installmentFields = { ...common, active: z.boolean(), status: status.optional(), startDate: date, totalInstallments: z.number().int().positive(), firstInstallment: z.number().int().positive().optional() };
-const recurringRevisionSchema = z.object({ ...recurringFields, effectiveCycleId: cycleId }).strict().refine(value => !value.endDate || value.endDate >= value.startDate).refine(value => isExpenseNatureCompatible(value.group, 'recorrente'));
-const installmentRevisionSchema = z.object({ ...installmentFields, effectiveCycleId: cycleId }).strict().refine(value => (value.firstInstallment ?? 1) <= value.totalInstallments).refine(value => isExpenseNatureCompatible(value.group, 'parcelado'));
-export const recurringDefinitionSchema = z.object({ ...recurringFields, revisions: z.array(recurringRevisionSchema).optional() }).strict().refine(value => !value.endDate || value.endDate >= value.startDate).refine(value => isExpenseNatureCompatible(value.group, 'recorrente'));
-export const installmentDefinitionSchema = z.object({ ...installmentFields, revisions: z.array(installmentRevisionSchema).optional() }).strict().refine(value => (value.firstInstallment ?? 1) <= value.totalInstallments).refine(value => isExpenseNatureCompatible(value.group, 'parcelado'));
+const recurringRevisionSchema = z.object({ ...recurringFields, effectiveCycleId: cycleId }).strict().refine(value => !value.endDate || value.endDate >= value.startDate);
+const installmentRevisionSchema = z.object({ ...installmentFields, effectiveCycleId: cycleId }).strict().refine(value => (value.firstInstallment ?? 1) <= value.totalInstallments);
+export const recurringDefinitionSchema = z.object({ ...recurringFields, revisions: z.array(recurringRevisionSchema).optional() }).strict().refine(value => !value.endDate || value.endDate >= value.startDate);
+export const installmentDefinitionSchema = z.object({ ...installmentFields, revisions: z.array(installmentRevisionSchema).optional() }).strict().refine(value => (value.firstInstallment ?? 1) <= value.totalInstallments);
 const stateSchema = z.object({
   version: z.literal(1), cycles: z.record(z.array(expenseOccurrenceSchema)),
   categories: z.record(expenseCategorySchema), paymentMethods: z.record(paymentMethodSchema),
+  budgetGroups: z.record(budgetGroupSchema).optional(),
+  skippedCommitments: z.record(z.array(id)).optional(),
   recurringDefinitions: z.record(recurringDefinitionSchema), installmentDefinitions: z.record(installmentDefinitionSchema),
 }).strict();
 
@@ -63,7 +92,28 @@ export function createExpenseDomainState(): ExpenseDomainState {
     { id: 'payment-dinheiro', name: 'Dinheiro', type: 'dinheiro', active: true },
     { id: 'payment-outros', name: 'Outros', type: 'outros', active: true },
   ];
-  return { version: 1, cycles: {}, categories, paymentMethods: Object.fromEntries(paymentMethods.map(value => [value.id, value])), recurringDefinitions: {}, installmentDefinitions: {} };
+  return {
+    version: 1,
+    cycles: {},
+    categories,
+    paymentMethods: Object.fromEntries(paymentMethods.map(value => [value.id, value])),
+    budgetGroups: defaultBudgetGroups(),
+    recurringDefinitions: {},
+    installmentDefinitions: {},
+  };
+}
+
+export function getBudgetGroupsMap(state: ExpenseDomainState): Record<string, BudgetGroupRecord> {
+  return state.budgetGroups ?? defaultBudgetGroups();
+}
+
+export function getOrderedBudgetGroups(state: ExpenseDomainState, includeInactive = false): BudgetGroupRecord[] {
+  const groups = Object.values(getBudgetGroupsMap(state)).filter(g => includeInactive || g.active);
+  return groups.sort((a, b) => {
+    if (a.isResidual || a.id === 'diarias') return 1;
+    if (b.isResidual || b.id === 'diarias') return -1;
+    return a.order - b.order;
+  });
 }
 
 export function parseExpenseDomainState(text: string): ExpenseDomainState {
@@ -71,19 +121,41 @@ export function parseExpenseDomainState(text: string): ExpenseDomainState {
   const definitions = [...Object.values(state.recurringDefinitions), ...Object.values(state.installmentDefinitions)];
   const definitionIds = definitions.map(value => value.id);
   if (new Set(definitionIds).size !== definitionIds.length) throw new Error('IDs de definições repetidos.');
-  for (const records of [state.categories, state.paymentMethods, state.recurringDefinitions, state.installmentDefinitions]) {
+  const groupsMap = getBudgetGroupsMap(state);
+  const catalogsToCheck = [
+    state.categories,
+    state.paymentMethods,
+    state.recurringDefinitions,
+    state.installmentDefinitions,
+    ...(state.budgetGroups ? [state.budgetGroups] : []),
+  ];
+  for (const records of catalogsToCheck) {
     for (const [key, value] of Object.entries(records)) if (id.safeParse(key).success === false || key !== value.id) throw new Error('ID de registro inválido.');
   }
+  if (state.budgetGroups && !state.budgetGroups.diarias) throw new Error('O grupo Gastos diários é obrigatório.');
   const occurrenceIds = new Set<string>();
   const definitionCycles = new Set<string>();
-  const references = (value: Pick<ExpenseOccurrence, 'categoryId' | 'paymentMethodId'>) => {
-    if (!Object.prototype.hasOwnProperty.call(state.categories, value.categoryId) || !Object.prototype.hasOwnProperty.call(state.paymentMethods, value.paymentMethodId)) throw new Error('Categoria ou forma de pagamento inexistente.');
+  const references = (value: Pick<ExpenseOccurrence, 'categoryId' | 'paymentMethodId' | 'group'>, nature: ExpenseOccurrence['nature']) => {
+    if (!Object.prototype.hasOwnProperty.call(state.categories, value.categoryId) || !Object.prototype.hasOwnProperty.call(state.paymentMethods, value.paymentMethodId)) {
+      throw new Error('Categoria ou forma de pagamento inexistente.');
+    }
+    if (!Object.prototype.hasOwnProperty.call(groupsMap, value.group)) throw new Error('Grupo orçamentário inexistente.');
+    if (!isExpenseNatureCompatible(value.group, nature, groupsMap)) throw new Error('Grupo incompatível com a natureza da despesa.');
   };
-  definitions.forEach(value => {
-    references(value);
+  Object.values(state.recurringDefinitions).forEach(value => {
+    references(value, 'recorrente');
     let previous = '';
     for (const revision of value.revisions ?? []) {
-      references(revision);
+      references(revision, 'recorrente');
+      if (revision.id !== value.id || revision.effectiveCycleId <= previous) throw new Error('Revisões de definição inválidas.');
+      previous = revision.effectiveCycleId;
+    }
+  });
+  Object.values(state.installmentDefinitions).forEach(value => {
+    references(value, 'parcelado');
+    let previous = '';
+    for (const revision of value.revisions ?? []) {
+      references(revision, 'parcelado');
       if (revision.id !== value.id || revision.effectiveCycleId <= previous) throw new Error('Revisões de definição inválidas.');
       previous = revision.effectiveCycleId;
     }
@@ -93,7 +165,7 @@ export function parseExpenseDomainState(text: string): ExpenseDomainState {
     for (const occurrence of occurrences) {
       if (key !== occurrence.cycleId || occurrenceIds.has(occurrence.id)) throw new Error('Ciclo ou ID de ocorrência inválido.');
       occurrenceIds.add(occurrence.id);
-      references(occurrence);
+      references(occurrence, occurrence.nature);
       if (occurrence.definitionId !== undefined) {
         const original = occurrence.nature === 'recorrente' ? state.recurringDefinitions[occurrence.definitionId] : state.installmentDefinitions[occurrence.definitionId];
         const definition = original ? definitionAtCycle(original, key) : undefined;
@@ -124,9 +196,16 @@ export function loadExpenseDomainState(storage: DomainStorage): ExpenseDomainSta
 export function saveExpenseDomainState(storage: DomainStorage, state: ExpenseDomainState): void {
   const validated = parseExpenseDomainState(JSON.stringify(state));
   const previous = loadExpenseDomainState(storage); // Invalid stored data must never be silently overwritten.
+  const validatedGroups = getBudgetGroupsMap(validated);
   const historical = [...Object.values(previous.cycles).flat(), ...allDefinitionRecords(previous)];
   for (const value of historical) {
-    if (!Object.prototype.hasOwnProperty.call(validated.categories, value.categoryId) || !Object.prototype.hasOwnProperty.call(validated.paymentMethods, value.paymentMethodId)) throw new Error('Desative os registros utilizados no histórico, sem excluí-los.');
+    if (
+      !Object.prototype.hasOwnProperty.call(validated.categories, value.categoryId) ||
+      !Object.prototype.hasOwnProperty.call(validated.paymentMethods, value.paymentMethodId) ||
+      !Object.prototype.hasOwnProperty.call(validatedGroups, value.group)
+    ) {
+      throw new Error('Desative os registros utilizados no histórico, sem excluí-los.');
+    }
   }
   storage.setItem(EXPENSE_DOMAIN_STORAGE_KEY, JSON.stringify(validated));
 }
@@ -137,7 +216,7 @@ export function deactivateExpenseCatalogRecord(state: ExpenseDomainState, catalo
   return parseExpenseDomainState(JSON.stringify({ ...state, [catalog]: { ...state[catalog], [recordId]: { ...record, active: false } } }));
 }
 
-export type ManualExpenseGroup = 'carro' | 'casa' | 'diarias';
+export type ManualExpenseGroup = string;
 export interface ManualExpenseInput { description: string; amount: number; categoryId: string; paymentMethodId: string; date: string; note?: string }
 export function localExpenseDate(today = new Date()): string {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -149,20 +228,26 @@ function validateManualInput(state: ExpenseDomainState, input: ManualExpenseInpu
   }
 }
 export function addManualExpense(state: ExpenseDomainState, cycleId: string, group: ManualExpenseGroup, input: ManualExpenseInput): ExpenseDomainState {
+  const groupsMap = getBudgetGroupsMap(state);
+  if (!groupsMap[group] || !groupsMap[group].active || !isExpenseNatureCompatible(group, 'avulso', groupsMap)) {
+    throw new Error('Este grupo não aceita despesas avulsas.');
+  }
   validateManualInput(state, input);
   const item = { ...input, id: crypto.randomUUID(), cycleId, group, nature: 'avulso', origin: 'manual' };
   return parseExpenseDomainState(JSON.stringify({ ...state, cycles: { ...state.cycles, [cycleId]: [item, ...(state.cycles[cycleId] ?? [])] } }));
 }
 export function updateManualExpense(state: ExpenseDomainState, cycleId: string, expenseId: string, input: ManualExpenseInput): ExpenseDomainState {
   const item = state.cycles[cycleId]?.find(value => value.id === expenseId);
-  if (!item || item.nature !== 'avulso' || !['carro', 'casa', 'diarias'].includes(item.group)) throw new Error('Lançamento avulso não encontrado.');
+  const groupsMap = getBudgetGroupsMap(state);
+  if (!item || item.nature !== 'avulso' || !isExpenseNatureCompatible(item.group, 'avulso', groupsMap)) throw new Error('Lançamento avulso não encontrado.');
   validateManualInput(state, input, item);
   const updated = { ...item, description: input.description, amount: input.amount, categoryId: input.categoryId, paymentMethodId: input.paymentMethodId, date: input.date, note: input.note };
   return parseExpenseDomainState(JSON.stringify({ ...state, cycles: { ...state.cycles, [cycleId]: state.cycles[cycleId].map(value => value.id === expenseId ? updated : value) } }));
 }
 export function removeManualExpense(state: ExpenseDomainState, cycleId: string, expenseId: string): ExpenseDomainState {
   const item = state.cycles[cycleId]?.find(value => value.id === expenseId);
-  if (!item || item.nature !== 'avulso' || !['carro', 'casa', 'diarias'].includes(item.group)) throw new Error('Lançamento avulso não encontrado.');
+  const groupsMap = getBudgetGroupsMap(state);
+  if (!item || item.nature !== 'avulso' || !isExpenseNatureCompatible(item.group, 'avulso', groupsMap)) throw new Error('Lançamento avulso não encontrado.');
   return parseExpenseDomainState(JSON.stringify({ ...state, cycles: { ...state.cycles, [cycleId]: state.cycles[cycleId].filter(value => value.id !== expenseId) } }));
 }
 export function listManualExpenses(state: ExpenseDomainState, cycleId: string, group: ManualExpenseGroup): ExpenseOccurrence[] {
@@ -174,6 +259,86 @@ export function saveExpenseCatalogRecord(state: ExpenseDomainState, catalog: 'ca
   if (catalog === 'categories' && recordId === 'category-investimento' && input.active) throw new Error('A categoria Investimento foi retirada das despesas.');
   const record = catalog === 'categories' ? { id: recordId, name: input.name, active: input.active } : { id: recordId, name: input.name, active: input.active, type: input.type };
   return parseExpenseDomainState(JSON.stringify({ ...state, [catalog]: { ...state[catalog], [recordId]: record } }));
+}
+
+export function saveBudgetGroup(
+  state: ExpenseDomainState,
+  input: { id?: string; name: string; icon: string; color: BudgetGroupRecord['color']; active: boolean }
+): ExpenseDomainState {
+  const groups = { ...getBudgetGroupsMap(state) };
+  if (input.id !== undefined) {
+    const existing = groups[input.id];
+    if (!existing) throw new Error('Grupo orçamentário não encontrado.');
+    if ((existing.isResidual || existing.id === 'diarias') && !input.active) {
+      throw new Error('O grupo Gastos diários é obrigatório e não pode ser desativado.');
+    }
+    groups[input.id] = { ...existing, name: input.name.trim(), icon: input.icon, color: input.color, active: input.active };
+  } else {
+    const recordId = `group-${crypto.randomUUID().slice(0, 8)}`;
+    const maxOrder = Object.values(groups)
+      .filter(g => !g.isResidual && g.id !== 'diarias')
+      .reduce((max, g) => Math.max(max, g.order), -1);
+    groups[recordId] = {
+      id: recordId,
+      name: input.name.trim(),
+      icon: input.icon,
+      color: input.color,
+      order: maxOrder + 1,
+      active: input.active,
+      allowedNatures: ['avulso', 'recorrente', 'parcelado'],
+    };
+  }
+  return parseExpenseDomainState(JSON.stringify({ ...state, budgetGroups: groups }));
+}
+
+export function reorderBudgetGroups(state: ExpenseDomainState, orderedNonResidualIds: string[]): ExpenseDomainState {
+  const groups = { ...getBudgetGroupsMap(state) };
+  orderedNonResidualIds.forEach((groupId, index) => {
+    const record = groups[groupId];
+    if (record && !record.isResidual && record.id !== 'diarias') {
+      groups[groupId] = { ...record, order: index };
+    }
+  });
+  return parseExpenseDomainState(JSON.stringify({ ...state, budgetGroups: groups }));
+}
+
+export function isCatalogRecordUsed(
+  state: ExpenseDomainState,
+  catalog: 'categories' | 'paymentMethods' | 'budgetGroups',
+  recordId: string,
+  plans: Record<string, { distribution: Record<string, number> }> = {}
+): boolean {
+  const records = [...Object.values(state.cycles).flat(), ...allDefinitionRecords(state)];
+  if (catalog === 'categories') return records.some(item => item.categoryId === recordId);
+  if (catalog === 'paymentMethods') return records.some(item => item.paymentMethodId === recordId);
+  if (records.some(item => item.group === recordId)) return true;
+  return Object.values(plans).some(plan => (plan.distribution[recordId] ?? 0) > 0);
+}
+
+export function deleteUnusedCatalogRecord(
+  state: ExpenseDomainState,
+  catalog: 'categories' | 'paymentMethods' | 'budgetGroups',
+  recordId: string,
+  plans: Record<string, { distribution: Record<string, number> }> = {}
+): ExpenseDomainState {
+  if (catalog === 'budgetGroups') {
+    const groups = { ...getBudgetGroupsMap(state) };
+    const existing = groups[recordId];
+    if (!existing) throw new Error('Grupo não encontrado.');
+    if (existing.isResidual || existing.id === 'diarias') throw new Error('O grupo Gastos diários é obrigatório.');
+    if (isCatalogRecordUsed(state, 'budgetGroups', recordId, plans)) {
+      throw new Error('Este grupo já foi utilizado e não pode ser excluído. Você pode inativá-lo.');
+    }
+    delete groups[recordId];
+    return parseExpenseDomainState(JSON.stringify({ ...state, budgetGroups: groups }));
+  }
+  if (!state[catalog][recordId]) throw new Error('Registro não encontrado.');
+  if (isCatalogRecordUsed(state, catalog, recordId, plans)) {
+    throw new Error('Este registro já foi utilizado e não pode ser excluído. Você pode inativá-lo.');
+  }
+  const nextCatalog = { ...state[catalog] };
+  delete nextCatalog[recordId];
+  return parseExpenseDomainState(JSON.stringify({ ...state, [catalog]: nextCatalog }));
 }
 
 // Snapshot revisions keep the original schedule available when unvisited historical cycles are opened.
@@ -225,7 +390,9 @@ function referenceDate(selected: string, day: number): string {
 }
 export function plannedCommitments(state: ExpenseDomainState, selected: string): ExpenseOccurrence[] {
   createFinancialCycle(selected);
+  const skipped = new Set(state.skippedCommitments?.[selected] ?? []);
   return [...Object.values(state.recurringDefinitions), ...Object.values(state.installmentDefinitions)].flatMap(original => {
+    if (skipped.has(original.id)) return [];
     const value = definitionAtCycle(original, selected);
     if (commitmentStatus(original, selected) !== 'ativa' || selected < startCycle(value)) return [];
     const isInstallment = 'totalInstallments' in value;
@@ -265,6 +432,10 @@ export function futureChangeCycle(selected: string, todayCycle = getFinancialCyc
 }
 export function addCommitment(state: ExpenseDomainState, kind: CommitmentKind, input: CommitmentInput): ExpenseDomainState {
   createFinancialCycle(input.startCycleId);
+  const groupsMap = getBudgetGroupsMap(state);
+  if (!groupsMap[input.group] || !groupsMap[input.group].active || !isExpenseNatureCompatible(input.group, kind, groupsMap)) {
+    throw new Error('Este grupo não aceita este tipo de compromisso.');
+  }
   validateManualInput(state, { ...input, date: input.startCycleId });
   const { startCycleId, dayOfMonth, totalInstallments, ...fields } = input;
   const recordId = crypto.randomUUID();
@@ -309,4 +480,141 @@ export function correctCommitmentOccurrence(state: ExpenseDomainState, selected:
   const existing = state.cycles[selected]?.find(value => value.id === occurrenceId && value.nature !== 'avulso');
   if (!existing) throw new Error('Ocorrência não encontrada neste ciclo.');
   return parseExpenseDomainState(JSON.stringify({ ...state, cycles: { ...state.cycles, [selected]: state.cycles[selected].map(value => value.id === occurrenceId ? { ...value, amount } : value) } }));
+}
+
+export function removeCommitmentOccurrenceInCycle(state: ExpenseDomainState, cycleId: string, occurrenceId: string): ExpenseDomainState {
+  const existing = state.cycles[cycleId]?.find(value => value.id === occurrenceId && value.nature !== 'avulso');
+  if (!existing || !existing.definitionId) throw new Error('Ocorrência de compromisso não encontrada neste ciclo.');
+  const currentSkipped = state.skippedCommitments?.[cycleId] ?? [];
+  const nextSkipped = currentSkipped.includes(existing.definitionId) ? currentSkipped : [...currentSkipped, existing.definitionId];
+  return parseExpenseDomainState(JSON.stringify({
+    ...state,
+    cycles: { ...state.cycles, [cycleId]: state.cycles[cycleId].filter(value => value.id !== occurrenceId) },
+    skippedCommitments: { ...(state.skippedCommitments ?? {}), [cycleId]: nextSkipped },
+  }));
+}
+
+export function cancelCommitmentFromCycle(
+  state: ExpenseDomainState,
+  kind: CommitmentKind,
+  definitionId: string,
+  fromCycleId: string
+): ExpenseDomainState {
+  createFinancialCycle(fromCycleId);
+  const catalog = kind === 'recorrente' ? 'recurringDefinitions' : 'installmentDefinitions';
+  const original = state[catalog][definitionId];
+  if (!original) throw new Error('Compromisso não encontrado.');
+  const nextCycles: ExpenseDomainState['cycles'] = {};
+  for (const [key, items] of Object.entries(state.cycles)) {
+    nextCycles[key] = key >= fromCycleId ? items.filter(item => item.definitionId !== definitionId) : items;
+  }
+  const current = definitionAtCycle(original, fromCycleId);
+  const { revisions: ignored, ...snapshot } = current;
+  void ignored;
+  let updatedDef: CommitmentDefinition;
+  if (fromCycleId <= startCycle(original)) {
+    updatedDef = { ...original, status: 'concluida', active: false, revisions: [] };
+  } else {
+    const revision = { ...snapshot, effectiveCycleId: fromCycleId, status: 'concluida' as const, active: false };
+    updatedDef = {
+      ...original,
+      revisions: [...(original.revisions ?? []).filter(r => r.effectiveCycleId < fromCycleId), revision] as never,
+    };
+  }
+  return parseExpenseDomainState(JSON.stringify({
+    ...state,
+    cycles: nextCycles,
+    [catalog]: { ...state[catalog], [definitionId]: updatedDef },
+  }));
+}
+
+export interface CommitmentOccurrenceUpdate {
+  description: string;
+  amount: number;
+  categoryId: string;
+  paymentMethodId: string;
+  note?: string;
+}
+
+export function updateCommitmentOccurrenceInCycle(
+  state: ExpenseDomainState,
+  cycleId: string,
+  occurrenceId: string,
+  updates: CommitmentOccurrenceUpdate
+): ExpenseDomainState {
+  const existing = state.cycles[cycleId]?.find(value => value.id === occurrenceId && value.nature !== 'avulso');
+  if (!existing) throw new Error('Ocorrência não encontrada neste ciclo.');
+  validateManualInput(state, { ...updates, date: existing.date }, existing);
+  const nextOccurrence = {
+    ...existing,
+    description: updates.description.trim(),
+    amount: updates.amount,
+    categoryId: updates.categoryId,
+    paymentMethodId: updates.paymentMethodId,
+    note: updates.note,
+  };
+  return parseExpenseDomainState(JSON.stringify({
+    ...state,
+    cycles: { ...state.cycles, [cycleId]: state.cycles[cycleId].map(value => value.id === occurrenceId ? nextOccurrence : value) },
+  }));
+}
+
+export function updateCommitmentFromCycle(
+  state: ExpenseDomainState,
+  kind: CommitmentKind,
+  definitionId: string,
+  fromCycleId: string,
+  updates: CommitmentOccurrenceUpdate
+): ExpenseDomainState {
+  createFinancialCycle(fromCycleId);
+  const catalog = kind === 'recorrente' ? 'recurringDefinitions' : 'installmentDefinitions';
+  const original = state[catalog][definitionId];
+  if (!original) throw new Error('Compromisso não encontrado.');
+  const current = definitionAtCycle(original, fromCycleId);
+  validateManualInput(
+    state,
+    { ...updates, date: fromCycleId },
+    { categoryId: current.categoryId, paymentMethodId: current.paymentMethodId } as ExpenseOccurrence
+  );
+  const { revisions: ignored, ...snapshot } = current;
+  void ignored;
+  const patchedFields = {
+    description: updates.description.trim(),
+    amount: updates.amount,
+    categoryId: updates.categoryId,
+    paymentMethodId: updates.paymentMethodId,
+    note: updates.note,
+  };
+  let updatedDef: CommitmentDefinition;
+  if (fromCycleId <= startCycle(original)) {
+    updatedDef = {
+      ...original,
+      ...patchedFields,
+      revisions: (original.revisions ?? []).map(rev => ({ ...rev, ...patchedFields })) as never,
+    };
+  } else {
+    const revision = { ...snapshot, ...patchedFields, effectiveCycleId: fromCycleId };
+    const laterRevisions = (original.revisions ?? [])
+      .filter(r => r.effectiveCycleId > fromCycleId)
+      .map(r => ({ ...r, ...patchedFields }));
+    updatedDef = {
+      ...original,
+      revisions: [
+        ...(original.revisions ?? []).filter(r => r.effectiveCycleId < fromCycleId),
+        revision,
+        ...laterRevisions,
+      ] as never,
+    };
+  }
+  const nextCycles: ExpenseDomainState['cycles'] = {};
+  for (const [key, items] of Object.entries(state.cycles)) {
+    nextCycles[key] = key >= fromCycleId
+      ? items.map(item => (item.definitionId === definitionId ? { ...item, ...patchedFields } : item))
+      : items;
+  }
+  return parseExpenseDomainState(JSON.stringify({
+    ...state,
+    cycles: nextCycles,
+    [catalog]: { ...state[catalog], [definitionId]: updatedDef },
+  }));
 }

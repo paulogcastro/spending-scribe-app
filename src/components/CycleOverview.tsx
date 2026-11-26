@@ -1,31 +1,18 @@
 import {
   AlertTriangle,
   CalendarDays,
-  Car,
   CheckCircle2,
   ChevronDown,
-  CreditCard,
-  Home,
   PiggyBank,
-  Receipt,
-  Repeat2,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
 import type { CyclePlanning } from '@/types/finance';
-import type { ExpenseDomainState } from '@/lib/expenseDomain';
+import { getOrderedBudgetGroups, type ExpenseDomainState } from '@/lib/expenseDomain';
 import { computeCycleOverview } from '@/lib/cycleOverview';
-import { budgetGroupLabels } from '@/lib/cyclePlanning';
 import { formatCurrency } from '@/lib/format';
 import { GoalProgress } from '@/components/GoalProgress';
-
-const groupIcons = {
-  carro: Car,
-  casa: Home,
-  fixos: Repeat2,
-  parcelados: CreditCard,
-  diarias: Receipt,
-} as const;
+import { getGroupIcon } from '@/components/budgetGroupStyles';
 
 export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
   planning: CyclePlanning; domain: ExpenseDomainState; periodLabel: string; readOnly: boolean;
@@ -227,19 +214,20 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
           </dl>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {(Object.keys(summary.subgoals) as (keyof typeof summary.subgoals)[]).map(group => {
-              const Icon = groupIcons[group];
-              const actual = summary.groupTotals[group];
-              const goal = summary.subgoals[group].amount;
+            {getOrderedBudgetGroups(domain).map(groupRecord => {
+              const Icon = getGroupIcon(groupRecord.icon);
+              const actual = summary.groupTotals[groupRecord.id] ?? 0;
+              const subgoal = summary.subgoals[groupRecord.id] ?? { percent: 0, amount: 0 };
+              const goal = subgoal.amount;
               const isOver = actual > 0 && actual > goal;
               return (
-                <div key={group} className="min-w-0 space-y-2 rounded-xl border border-border bg-secondary/35 p-3.5">
+                <div key={groupRecord.id} className="min-w-0 space-y-2 rounded-xl border border-border bg-secondary/35 p-3.5">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="flex items-center gap-1.5 text-xs font-semibold">
-                      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                      {budgetGroupLabels[group]}
+                    <h3 className="flex items-center gap-1.5 truncate text-xs font-semibold">
+                      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{groupRecord.name}</span>
                     </h3>
-                    <span className="text-xs text-muted-foreground tabular-nums">{summary.subgoals[group].percent}%</span>
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{subgoal.percent}%</span>
                   </div>
                   <p className="break-words text-sm font-bold tabular-nums">
                     {formatCurrency(actual)}

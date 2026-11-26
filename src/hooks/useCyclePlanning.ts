@@ -42,5 +42,5 @@ export function useCyclePlanning(cycleId: string) {
     }
   };
 
-  return { planning, derived: computePlanning(planning), mutate, readOnly: initial.error };
+  return { planning, plans: state.plans, derived: computePlanning(planning), mutate, readOnly: initial.error };
 }
