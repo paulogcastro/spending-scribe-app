@@ -48,9 +48,9 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
   const balanceTone = isNegativeBalance ? 'text-destructive' : isPositiveBalance ? 'text-success' : 'text-foreground';
 
   const expenseRatio = summary.mainExpenseGoal > 0 ? Math.round((summary.expenses / summary.mainExpenseGoal) * 100) : 0;
-  const isOverExpenseGoal = summary.expenses > 0 && summary.expenses > summary.mainExpenseGoal;
-  const isNearExpenseGoal = !isOverExpenseGoal && summary.mainExpenseGoal > 0 && expenseRatio >= 85;
-  const expenseTone = isOverExpenseGoal ? 'text-destructive' : 'text-foreground';
+  const isOverExpenseLimit = summary.expenses > 0 && summary.expenses > summary.mainExpenseGoal;
+  const isNearExpenseLimit = !isOverExpenseLimit && summary.mainExpenseGoal > 0 && expenseRatio >= 70;
+  const expenseTone = isOverExpenseLimit ? 'text-destructive' : isNearExpenseLimit ? 'text-warning' : 'text-foreground';
 
   const timeProgress = pace.totalDays > 0 ? Math.min(100, Math.round((pace.daysElapsed / pace.totalDays) * 100)) : 0;
 
@@ -120,7 +120,7 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
           </div>
         </div>
 
-        {/* Card: Despesas realizadas vs Meta */}
+        {/* Card: Despesas realizadas vs Limite */}
         <div className="flex flex-col justify-between gap-4 rounded-2xl border border-border bg-card p-5 shadow-card md:col-span-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -131,14 +131,14 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
             </div>
             <span
               className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${
-                isOverExpenseGoal
+                isOverExpenseLimit
                   ? 'bg-destructive/10 text-destructive'
-                  : isNearExpenseGoal
+                  : isNearExpenseLimit
                     ? 'bg-warning/15 text-warning'
-                    : 'bg-primary/10 text-primary'
+                    : 'bg-secondary text-foreground'
               }`}
             >
-              {summary.mainExpenseGoal > 0 ? `${expenseRatio}% da meta` : 'Sem meta'}
+              {summary.mainExpenseGoal > 0 ? `${expenseRatio}% do limite` : 'Sem limite'}
             </span>
           </div>
 
@@ -146,19 +146,19 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
             <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary">
               <div
                 className={`h-full rounded-full transition-all ${
-                  isOverExpenseGoal ? 'bg-destructive' : isNearExpenseGoal ? 'bg-warning' : 'bg-primary'
+                  isOverExpenseLimit ? 'bg-destructive' : isNearExpenseLimit ? 'bg-warning' : 'bg-primary'
                 }`}
                 style={{ width: `${Math.min(100, expenseRatio)}%` }}
               />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
               <span>
-                Meta do ciclo: <strong className="text-foreground tabular-nums">{formatCurrency(summary.mainExpenseGoal)}</strong>
+                Limite do ciclo: <strong className="text-foreground tabular-nums">{formatCurrency(summary.mainExpenseGoal)}</strong>
               </span>
-              <span className={`tabular-nums ${summary.expenseRemaining < 0 ? 'font-medium text-destructive' : ''}`}>
+              <span className={`tabular-nums ${summary.expenseRemaining < 0 ? 'font-medium text-destructive' : isNearExpenseLimit ? 'font-medium text-warning' : ''}`}>
                 {summary.expenseRemaining >= 0
-                  ? `Restam ${formatCurrency(summary.expenseRemaining)}`
-                  : `Excedeu ${formatCurrency(Math.abs(summary.expenseRemaining))}`}
+                  ? `Ainda pode gastar ${formatCurrency(summary.expenseRemaining)}`
+                  : `Excedeu o limite em ${formatCurrency(Math.abs(summary.expenseRemaining))}`}
               </span>
             </div>
           </div>

@@ -160,4 +160,46 @@
   .finance-form label { @apply text-sm font-medium; }
   .finance-form [role="combobox"], .finance-form input { @apply h-11; }
   .finance-form > .form-actions { @apply mt-2 gap-2 border-t border-border pt-4 sm:col-span-2; }
+
+  /* Tinted budget group cards */
+  .group-card-diarias {
+    background: linear-gradient(135deg, hsl(0 72% 55% / 0.09) 0%, hsl(var(--card)) 55%);
+    border-color: hsl(0 72% 55% / 0.28);
+  }
+  .dark .group-card-diarias {
+    background: linear-gradient(135deg, hsl(0 65% 52% / 0.16) 0%, hsl(var(--card)) 60%);
+    border-color: hsl(0 65% 52% / 0.30);
+  }
+  .group-card-casa {
+    background: linear-gradient(135deg, hsl(38 92% 50% / 0.10) 0%, hsl(var(--card)) 55%);
+    border-color: hsl(38 92% 50% / 0.28);
+  }
+  .dark .group-card-casa {
+    background: linear-gradient(135deg, hsl(38 90% 55% / 0.15) 0%, hsl(var(--card)) 60%);
+    border-color: hsl(38 90% 55% / 0.28);
+  }
+  .group-card-carro {
+    background: linear-gradient(135deg, hsl(217 91% 60% / 0.09) 0%, hsl(var(--card)) 55%);
+    border-color: hsl(217 91% 60% / 0.26);
+  }
+  .dark .group-card-carro {
+    background: linear-gradient(135deg, hsl(217 91% 60% / 0.15) 0%, hsl(var(--card)) 60%);
+    border-color: hsl(217 91% 60% / 0.28);
+  }
+  .group-card-fixos {
+    background: linear-gradient(135deg, hsl(280 68% 60% / 0.09) 0%, hsl(var(--card)) 55%);
+    border-color: hsl(280 68% 60% / 0.26);
+  }
+  .dark .group-card-fixos {
+    background: linear-gradient(135deg, hsl(280 68% 60% / 0.15) 0%, hsl(var(--card)) 60%);
+    border-color: hsl(280 68% 60% / 0.28);
+  }
+  .group-card-parcelados {
+    background: linear-gradient(135deg, hsl(340 82% 52% / 0.09) 0%, hsl(var(--card)) 55%);
+    border-color: hsl(340 82% 52% / 0.26);
+  }
+  .dark .group-card-parcelados {
+    background: linear-gradient(135deg, hsl(340 82% 52% / 0.15) 0%, hsl(var(--card)) 60%);
+    border-color: hsl(340 82% 52% / 0.28);
+  }
 }

@@ -23,7 +23,7 @@ const distributionSegmentColors = {
   casa: 'bg-warning',
   fixos: 'bg-category-entertainment',
   parcelados: 'bg-category-shopping',
-  diarias: 'bg-primary',
+  diarias: 'bg-destructive',
 } as const;
 
 export function CyclePlanningSection({ cycleId, cyclePlanning }: { cycleId: string; cyclePlanning: ReturnType<typeof useCyclePlanning> }) {
