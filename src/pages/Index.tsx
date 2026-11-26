@@ -110,12 +110,14 @@ const Index = () => {
 
       <main className="container space-y-5 pb-24 pt-4 sm:space-y-6 sm:pb-8 sm:pt-6">
         {/* Barra superior: Seletor de ciclo + Segmented Control (Desktop) + Nova despesa */}
-        <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 bg-background/90 py-2.5 backdrop-blur-sm">
-          <CycleSelector cycle={cycle} onNavigate={navigateCycle} />
+        <div className="sticky top-0 z-20 flex flex-col gap-3 bg-background/90 py-2.5 backdrop-blur-sm sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+          <div className="sm:justify-self-start">
+            <CycleSelector cycle={cycle} onNavigate={navigateCycle} />
+          </div>
 
           <nav
             aria-label="Navegação principal"
-            className="hidden items-center gap-1 rounded-2xl border border-border bg-card p-1 shadow-card sm:inline-flex"
+            className="hidden items-center gap-1 rounded-2xl border border-border bg-card p-1 shadow-card sm:inline-flex sm:justify-self-center"
           >
             {navItems.map(({ id, label, icon: Icon }) => {
               const active = activeTab === id;
@@ -138,12 +140,14 @@ const Index = () => {
             })}
           </nav>
 
-          {activeTab === 'cycle-expenses' && (
-            <Button className="h-11 w-full gap-2 rounded-xl shadow-sm sm:w-auto" disabled={domain.readOnly} onClick={() => startExpense()}>
-              <Plus className="h-4 w-4" />
-              Nova despesa
-            </Button>
-          )}
+          <div className="sm:justify-self-end">
+            {activeTab === 'cycle-expenses' && (
+              <Button className="h-11 w-full gap-2 rounded-xl shadow-sm sm:w-auto" disabled={domain.readOnly} onClick={() => startExpense()}>
+                <Plus className="h-4 w-4" />
+                Nova despesa
+              </Button>
+            )}
+          </div>
         </div>
 
         {activeTab === 'cycle-expenses' && (
