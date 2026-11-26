@@ -155,7 +155,8 @@
   .cycle-tabs > [role="tab"] { @apply h-full rounded-none border-b-2 border-transparent px-1 text-muted-foreground shadow-none; }
   .cycle-tabs > [role="tab"][data-state="active"] { @apply border-primary bg-transparent text-primary shadow-none; }
   .finance-form { @apply grid grid-cols-1 gap-4 sm:grid-cols-2; }
-  .finance-form > div { @apply min-w-0 space-y-2; }
+  .finance-form > div { @apply min-w-0; }
+  .finance-form > div:not(.grid) { @apply space-y-2; }
   .finance-form > .form-wide { @apply sm:col-span-2; }
   .finance-form label { @apply text-sm font-medium; }
   .finance-form [role="combobox"], .finance-form input { @apply h-11; }

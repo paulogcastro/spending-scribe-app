@@ -23,7 +23,6 @@ import {
 } from '@/lib/expenseDomain';
 import { computeCategoryBreakdown } from '@/lib/cycleOverview';
 import { formatCurrency, formatDate } from '@/lib/format';
-import { ExpenseCatalogs } from '@/components/ExpenseCatalogs';
 import { CycleCommitments } from '@/components/CycleCommitments';
 import { getGroupColorStyles, getGroupIcon } from '@/components/budgetGroupStyles';
 import { getFinancialCycle } from '@/lib/financialCycles';
@@ -114,7 +113,6 @@ export function CycleExpenses({
             <Repeat2 className="mr-1.5 h-4 w-4" />
             Recorrências e parcelas
           </Button>
-          <ExpenseCatalogs domain={domain} />
         </div>
       </div>
 

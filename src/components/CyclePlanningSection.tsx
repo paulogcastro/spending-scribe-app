@@ -270,7 +270,7 @@ export function CyclePlanningSection({
                         className="h-11 text-sm"
                       />
                     </div>
-                    <div className="min-w-0">
+                    <div className="flex justify-end">
                       <Button size="icon" variant="ghost" aria-label="Confirmar renda extra" className="h-11 w-11" onClick={handleAdd}>
                         <Plus className="h-4 w-4" />
                       </Button>

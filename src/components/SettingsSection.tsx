@@ -102,11 +102,11 @@ export function SettingsSection({
         }}
         className="space-y-4"
       >
-        <TabsList className="grid w-full max-w-lg grid-cols-4">
-          <TabsTrigger value="groups">Grupos</TabsTrigger>
-          <TabsTrigger value="categories">Categorias</TabsTrigger>
-          <TabsTrigger value="paymentMethods">Pagamentos</TabsTrigger>
-          <TabsTrigger value="backup">Backup</TabsTrigger>
+        <TabsList className="grid h-auto w-full max-w-lg grid-cols-2 gap-1 sm:grid-cols-4">
+          <TabsTrigger value="groups" className="py-2">Grupos</TabsTrigger>
+          <TabsTrigger value="categories" className="py-2">Categorias</TabsTrigger>
+          <TabsTrigger value="paymentMethods" className="py-2">Pagamentos</TabsTrigger>
+          <TabsTrigger value="backup" className="py-2">Backup</TabsTrigger>
         </TabsList>
 
         {/* Sub-aba 1: Grupos Orçamentários */}
