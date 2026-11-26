@@ -47,9 +47,11 @@ export function useCloudAuth(syncTriggerKey: string) {
         readyToPushRef.current = true;
         setSyncStatus('synced');
       }
-    } catch {
+    } catch (err) {
+      console.error('Cloud sync error:', err);
       setSyncStatus('error');
-      toast.error('Não foi possível sincronizar com a nuvem. Verifique se o SQL foi executado no Supabase.');
+      const detail = err instanceof Error ? err.message : (typeof err === 'object' && err && 'message' in err ? String((err as { message: unknown }).message) : 'Erro desconhecido');
+      toast.error(`Erro ao sincronizar com a nuvem: ${detail}`);
     }
   }, []);
 
