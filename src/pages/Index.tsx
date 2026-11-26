@@ -29,6 +29,7 @@ import { AuthGateScreen } from '@/components/AuthGateScreen';
 import { BrandLogo } from '@/components/BrandLogo';
 import { InstallAppButton } from '@/components/InstallAppButton';
 import { OnboardingDialog, ONBOARDING_STORAGE_KEY } from '@/components/OnboardingDialog';
+import { GuidedTour, TOUR_STORAGE_KEY } from '@/components/GuidedTour';
 import { useCloudAuth } from '@/hooks/useCloudAuth';
 import { hasMeaningfulLocalData, readLocalFinanceSnapshot } from '@/lib/cloudSync';
 
@@ -42,6 +43,7 @@ const navItems: { id: MainTab; label: string; icon: typeof Receipt }[] = [
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<MainTab>('cycle-expenses');
+  const [tourOpen, setTourOpen] = useState(false);
   const [expenseEditor, setExpenseEditor] = useState<CycleExpenseEditor | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -153,7 +155,12 @@ const Index = () => {
 
           <div className="sm:justify-self-end">
             {activeTab === 'cycle-expenses' && (
-              <Button className="h-11 w-full gap-2 rounded-xl shadow-sm sm:w-auto" disabled={domain.readOnly} onClick={() => startExpense()}>
+              <Button
+                data-tour="new-expense-btn"
+                className="h-11 w-full gap-2 rounded-xl shadow-sm sm:w-auto"
+                disabled={domain.readOnly}
+                onClick={() => startExpense()}
+              >
                 <Plus className="h-4 w-4" />
                 Nova despesa
               </Button>
@@ -241,8 +248,20 @@ const Index = () => {
 
       <OnboardingDialog
         open={onboardingOpen && !cloudAuth.pendingMigration}
-        onClose={() => setOnboardingOpen(false)}
-        onStartPlanning={() => setActiveTab('planning')}
+        onClose={() => {
+          setOnboardingOpen(false);
+          localStorage.setItem(TOUR_STORAGE_KEY, '1');
+        }}
+        onStartPlanning={() => {
+          setActiveTab('planning');
+          setTourOpen(true);
+        }}
+      />
+
+      <GuidedTour
+        open={tourOpen}
+        onClose={() => setTourOpen(false)}
+        onSelectTab={setActiveTab}
       />
     </div>
   );
