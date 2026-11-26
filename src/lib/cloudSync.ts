@@ -31,6 +31,13 @@ export function hasMeaningfulLocalData(snapshot: CloudFinanceSnapshot): boolean 
   return hasPlans || hasCycles || hasRecurring || hasInstallments;
 }
 
+export function clearLocalFinanceSession(): void {
+  localStorage.removeItem(CYCLE_STORAGE_KEY);
+  localStorage.removeItem(PLANNING_STORAGE_KEY);
+  localStorage.removeItem(EXPENSE_DOMAIN_STORAGE_KEY);
+  localStorage.removeItem('dindin-onboarding-done-v1');
+}
+
 export function applyCloudSnapshotToLocalStorage(snapshot: CloudFinanceSnapshot): void {
   if (snapshot.cycleState) {
     const valid = parseCycleState(JSON.stringify(snapshot.cycleState));

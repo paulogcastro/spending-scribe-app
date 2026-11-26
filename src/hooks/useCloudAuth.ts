@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import {
   applyCloudSnapshotToLocalStorage,
+  clearLocalFinanceSession,
   fetchCloudFinanceData,
   fetchCloudUpdatedAt,
   hasMeaningfulLocalData,
@@ -15,6 +16,7 @@ export type CloudSyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 
 const HYDRATED_KEY = 'dindin-cloud-hydrated-user';
 const LAST_UPDATED_KEY = 'dindin-cloud-last-updated-at';
+const LAST_USER_KEY = 'dindin-cloud-last-user-id';
 
 export function useCloudAuth(syncTriggerKey: string) {
   const [user, setUser] = useState<User | null>(null);
@@ -36,6 +38,14 @@ export function useCloudAuth(syncTriggerKey: string) {
 
   const handleSignedInUser = useCallback(async (signedUser: User) => {
     try {
+      const lastUserId = localStorage.getItem(LAST_USER_KEY);
+      if (lastUserId && lastUserId !== signedUser.id) {
+        clearLocalFinanceSession();
+        sessionStorage.removeItem(HYDRATED_KEY);
+        recordUpdatedAt(null);
+      }
+      localStorage.setItem(LAST_USER_KEY, signedUser.id);
+
       const cloud = await fetchCloudFinanceData(signedUser.id);
       if (cloud && (cloud.cycleState || cloud.cyclePlanning || cloud.expenseDomain)) {
         const alreadyHydrated = sessionStorage.getItem(HYDRATED_KEY) === signedUser.id;
@@ -53,15 +63,23 @@ export function useCloudAuth(syncTriggerKey: string) {
       }
 
       const localSnapshot = readLocalFinanceSnapshot();
-      if (hasMeaningfulLocalData(localSnapshot)) {
+      if (!lastUserId && hasMeaningfulLocalData(localSnapshot)) {
         setPendingMigration(true);
         readyToPushRef.current = false;
       } else {
-        const result = await saveCloudFinanceData(signedUser.id, localSnapshot);
+        const alreadyHydrated = sessionStorage.getItem(HYDRATED_KEY) === signedUser.id;
+        if (!alreadyHydrated) {
+          clearLocalFinanceSession();
+        }
+        const cleanSnapshot = readLocalFinanceSnapshot();
+        const result = await saveCloudFinanceData(signedUser.id, cleanSnapshot);
         sessionStorage.setItem(HYDRATED_KEY, signedUser.id);
         if (!result.conflict) recordUpdatedAt(result.updatedAt);
         readyToPushRef.current = true;
         setSyncStatus('synced');
+        if (!alreadyHydrated) {
+          window.location.reload();
+        }
       }
     } catch (err) {
       console.error('Cloud sync error:', err);
@@ -92,6 +110,8 @@ export function useCloudAuth(syncTriggerKey: string) {
       if (event === 'SIGNED_IN' && nextUser) {
         void handleSignedInUser(nextUser);
       } else if (event === 'SIGNED_OUT') {
+        clearLocalFinanceSession();
+        localStorage.removeItem(LAST_USER_KEY);
         sessionStorage.removeItem(HYDRATED_KEY);
         recordUpdatedAt(null);
         readyToPushRef.current = false;
