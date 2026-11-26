@@ -27,8 +27,14 @@ export function BackupControls({ exportBackup, restoreBackup }: { exportBackup: 
     if (input.current) input.current.value = '';
   };
   return <>
-    <Button size="icon" variant="outline" aria-label="Exportar backup" title="Exportar backup" onClick={download}><Download className="h-4 w-4" /></Button>
-    <Button size="icon" variant="outline" aria-label="Restaurar backup" title="Restaurar backup" onClick={() => input.current?.click()}><Upload className="h-4 w-4" /></Button>
+    <Button size="sm" variant="outline" onClick={download}>
+      <Download className="mr-1.5 h-4 w-4" />
+      Exportar backup
+    </Button>
+    <Button size="sm" variant="outline" onClick={() => input.current?.click()}>
+      <Upload className="mr-1.5 h-4 w-4" />
+      Restaurar backup
+    </Button>
     <input ref={input} className="hidden" type="file" accept=".json,application/json" aria-label="Arquivo de backup" onChange={event => void load(event.target.files?.[0])} />
     <Dialog open={pending !== null} onOpenChange={open => { if (!open) setPending(null); }}>
       <DialogContent><DialogHeader><DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />Restaurar cópia de segurança?</DialogTitle>

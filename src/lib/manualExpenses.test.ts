@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { addManualExpense, createExpenseDomainState, listManualExpenses, updateManualExpense, removeManualExpense, saveExpenseCatalogRecord, saveExpenseDomainState, loadExpenseDomainState, EXPENSE_DOMAIN_STORAGE_KEY, isExpenseNatureCompatible, parseExpenseDomainState, localExpenseDate } from './expenseDomain';
-const input = { description: 'Almoço', amount: 50, categoryId: 'category-almoco', paymentMethodId: 'payment-pix', date: '2026-10-01', note: 'Teste' };
+const input = { description: 'Almoço', amount: 50, categoryId: 'category-alimentacao', paymentMethodId: 'payment-pix', date: '2026-10-01', note: 'Teste' };
 const cycleId = '2026-11-04';
 test('CRUD avulso preserva ID, grupo e ciclo; data fora do ciclo não realoca a despesa', () => {
   let state = addManualExpense(createExpenseDomainState(), cycleId, 'carro', input);

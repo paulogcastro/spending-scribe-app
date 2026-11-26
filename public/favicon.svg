@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="df-grad" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#0d9488" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#df-grad)" />
+  <path d="M44.5 23.5A15 15 0 0 0 18 26" stroke="#ffffff" stroke-width="4.2" stroke-linecap="round" />
+  <path d="M19.5 40.5A15 15 0 0 0 46 38" stroke="#ffffff" stroke-width="4.2" stroke-linecap="round" />
+  <path d="M23 33.5C26 28.5 30 28.5 32 32C34 35.5 38 35.5 41 30.5" stroke="#ffffff" stroke-width="4.2" stroke-linecap="round" />
+  <circle cx="45" cy="24" r="2.6" fill="#ffffff" />
+</svg>

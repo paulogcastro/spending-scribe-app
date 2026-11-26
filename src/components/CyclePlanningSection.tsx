@@ -140,9 +140,11 @@ export function CyclePlanningSection({
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="text-xs font-medium text-muted-foreground" htmlFor={`planned-salary-${cycleId}`}>
-                  Salário planejado
-                </label>
+                <div className="flex min-h-5 items-center justify-between gap-2">
+                  <label className="text-xs font-medium text-muted-foreground" htmlFor={`planned-salary-${cycleId}`}>
+                    Salário planejado
+                  </label>
+                </div>
                 <CurrencyInput
                   id={`planned-salary-${cycleId}`}
                   value={planning.plannedSalary}
@@ -152,7 +154,7 @@ export function CyclePlanningSection({
                 />
               </div>
               <div>
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex min-h-5 items-center justify-between gap-2">
                   <label className="text-xs font-medium text-muted-foreground" htmlFor={`received-salary-${cycleId}`}>
                     Salário recebido
                   </label>
@@ -160,7 +162,7 @@ export function CyclePlanningSection({
                     type="button"
                     disabled={readOnly}
                     onClick={() => mutate(plan => setReceivedSalary(plan, plan.plannedSalary))}
-                    className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                    className="whitespace-nowrap text-xs font-semibold text-primary hover:underline disabled:opacity-50"
                   >
                     Igual ao planejado
                   </button>
@@ -268,7 +270,7 @@ export function CyclePlanningSection({
                         className="h-11 text-sm"
                       />
                     </div>
-                    <div className="min-w-0">
+                    <div className="flex justify-end">
                       <Button size="icon" variant="ghost" aria-label="Confirmar renda extra" className="h-11 w-11" onClick={handleAdd}>
                         <Plus className="h-4 w-4" />
                       </Button>
@@ -321,9 +323,11 @@ export function CyclePlanningSection({
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="text-xs font-medium text-muted-foreground" htmlFor={`base-goal-${cycleId}`}>
-                  Meta de investimento
-                </label>
+                <div className="flex min-h-5 items-center justify-between gap-2">
+                  <label className="text-xs font-medium text-muted-foreground" htmlFor={`base-goal-${cycleId}`}>
+                    Meta de investimento
+                  </label>
+                </div>
                 <CurrencyInput
                   id={`base-goal-${cycleId}`}
                   value={planning.investmentBaseGoal}
@@ -333,7 +337,7 @@ export function CyclePlanningSection({
                 />
               </div>
               <div>
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex min-h-5 items-center justify-between gap-2">
                   <label className="text-xs font-medium text-muted-foreground" htmlFor={`invested-amount-${cycleId}`}>
                     Investido no ciclo
                   </label>
@@ -341,7 +345,7 @@ export function CyclePlanningSection({
                     type="button"
                     disabled={readOnly}
                     onClick={() => mutate(plan => setInvestedAmount(plan, plan.investmentBaseGoal))}
-                    className="text-xs font-semibold text-investment hover:underline disabled:opacity-50"
+                    className="whitespace-nowrap text-xs font-semibold text-investment hover:underline disabled:opacity-50"
                   >
                     Igual à meta
                   </button>

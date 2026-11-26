@@ -5,7 +5,7 @@ import { applyBackup, buildBackup, parseBackup } from './backup';
 import { CYCLE_STORAGE_KEY, createFinancialCycle } from './financialCycles';
 
 const nov = '2026-11-04'; const dec = '2026-12-04'; const jan = '2027-01-04';
-const input: CommitmentInput = { description: 'Aluguel', amount: 1000, group: 'casa', categoryId: 'category-casa', paymentMethodId: 'payment-pix', startCycleId: nov, dayOfMonth: 5, totalInstallments: 3 };
+const input: CommitmentInput = { description: 'Aluguel', amount: 1000, group: 'casa', categoryId: 'category-moradia', paymentMethodId: 'payment-pix', startCycleId: nov, dayOfMonth: 5, totalInstallments: 3 };
 const recurring = () => addCommitment(createExpenseDomainState(), 'recorrente', input);
 const installments = () => addCommitment(createExpenseDomainState(), 'parcelado', { ...input, description: 'Compra', group: 'parcelados', amount: 100 });
 function memory() { const map = new Map<string, string>(); return { getItem: (key: string) => map.get(key) ?? null, setItem: (key: string, value: string) => { map.set(key, value); }, removeItem: (key: string) => { map.delete(key); } }; }
@@ -147,10 +147,10 @@ test('edições da definição rejeitam períodos atuais ou históricos e ocorr�
 });
 test('catálogos inativos históricos são aceitos, mas não novas referências inativas', () => {
   let state = recurring(); const id = Object.keys(state.recurringDefinitions)[0];
-  state.categories['category-casa'].active = false; state.categories['category-almoco'].active = false;
+  state.categories['category-moradia'].active = false; state.categories['category-alimentacao'].active = false;
   state = reviseCommitment(state, 'recorrente', id, dec, { ...input, amount: 1100 }, undefined, nov);
   assert.equal(definitionAtCycle(state.recurringDefinitions[id], dec).amount, 1100);
-  assert.throws(() => reviseCommitment(state, 'recorrente', id, jan, { ...input, categoryId: 'category-almoco' }, undefined, dec));
+  assert.throws(() => reviseCommitment(state, 'recorrente', id, jan, { ...input, categoryId: 'category-alimentacao' }, undefined, dec));
 });
 test('duplicação de vínculo por ciclo e revisões inválidas são rejeitadas', () => {
   let state = generateCycleCommitments(recurring(), nov, nov);

@@ -6,7 +6,7 @@ function memory(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
   return { data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } };
 }
-const occurrence: ExpenseOccurrence = { id: 'expense-1', cycleId: '2026-11-04', description: 'Compra', amount: 50, group: 'diarias', nature: 'avulso', categoryId: 'category-almoco', paymentMethodId: 'payment-inter', date: '2026-11-05', origin: 'manual', note: 'Observação' };
+const occurrence: ExpenseOccurrence = { id: 'expense-1', cycleId: '2026-11-04', description: 'Compra', amount: 50, group: 'diarias', nature: 'avulso', categoryId: 'category-alimentacao', paymentMethodId: 'payment-credito', date: '2026-11-05', origin: 'manual', note: 'Observação' };
 function withOccurrence() {
   const state = createExpenseDomainState();
   state.cycles[occurrence.cycleId] = [{ ...occurrence }];
@@ -38,7 +38,7 @@ test('categoria e natureza são independentes; ocorrência tem exatamente um dos
   for (const group of ['carro', 'casa', 'diarias'] as const) {
     const state = withOccurrence();
     state.cycles[occurrence.cycleId][0].group = group;
-    assert.equal(parse(state).cycles[occurrence.cycleId][0].categoryId, 'category-almoco');
+    assert.equal(parse(state).cycles[occurrence.cycleId][0].categoryId, 'category-alimentacao');
     assert.equal(parse(state).cycles[occurrence.cycleId][0].nature, 'avulso');
   }
   assert.throws(() => parse({ ...withOccurrence(), cycles: { [occurrence.cycleId]: [{ ...occurrence, group: ['casa', 'carro'] }] } }));
@@ -131,7 +131,7 @@ test('gravação rejeita remover catálogo usado anteriormente mesmo removendo o
 
 test('definições permanentes validadas não geram ocorrências automaticamente', () => {
   const state = createExpenseDomainState();
-  const common = { id: 'rent', description: 'Aluguel', amount: 1000, group: 'casa' as const, categoryId: 'category-casa', paymentMethodId: 'payment-pix', active: true, startDate: '2026-11-01' };
+  const common = { id: 'rent', description: 'Aluguel', amount: 1000, group: 'casa' as const, categoryId: 'category-moradia', paymentMethodId: 'payment-pix', active: true, startDate: '2026-11-01' };
   state.recurringDefinitions.rent = { ...common, dayOfMonth: 5 };
   state.installmentDefinitions.purchase = { ...common, id: 'purchase', totalInstallments: 12 };
   assert.deepEqual(parse(state).cycles, {});

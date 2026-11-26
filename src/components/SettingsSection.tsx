@@ -17,6 +17,8 @@ import {
   type BudgetGroupRecord,
   type PaymentMethod,
 } from '@/lib/expenseDomain';
+import type { FinanceBackup } from '@/lib/backup';
+import { BackupControls } from '@/components/BackupControls';
 import { getGroupColorStyles, getGroupIcon, groupColorOptions, groupIconOptions } from '@/components/budgetGroupStyles';
 
 const paymentTypes: Record<NonNullable<PaymentMethod['type']>, string> = {
@@ -35,11 +37,15 @@ const natureLabels = {
 export function SettingsSection({
   domain,
   planningPlans,
+  exportBackup,
+  restoreBackup,
 }: {
   domain: ReturnType<typeof useExpenseDomain>;
   planningPlans: Record<string, { distribution: Record<string, number> }>;
+  exportBackup: () => FinanceBackup;
+  restoreBackup: (backup: FinanceBackup) => { legacy: boolean };
 }) {
-  const [subTab, setSubTab] = useState<'groups' | 'categories' | 'paymentMethods'>('groups');
+  const [subTab, setSubTab] = useState<'groups' | 'categories' | 'paymentMethods' | 'backup'>('groups');
   const [groupDraft, setGroupDraft] = useState<{
     id?: string;
     name: string;
@@ -76,7 +82,7 @@ export function SettingsSection({
           </div>
           <div>
             <h2 className="text-lg font-semibold">Configurações</h2>
-            <p className="text-xs text-muted-foreground">Gerencie grupos orçamentários, categorias e formas de pagamento</p>
+            <p className="text-xs text-muted-foreground">Gerencie grupos, categorias, pagamentos e cópias de segurança</p>
           </div>
         </div>
       </div>
@@ -96,10 +102,11 @@ export function SettingsSection({
         }}
         className="space-y-4"
       >
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="groups">Grupos</TabsTrigger>
-          <TabsTrigger value="categories">Categorias</TabsTrigger>
-          <TabsTrigger value="paymentMethods">Pagamentos</TabsTrigger>
+        <TabsList className="grid h-auto w-full max-w-lg grid-cols-2 gap-1 sm:grid-cols-4">
+          <TabsTrigger value="groups" className="py-2">Grupos</TabsTrigger>
+          <TabsTrigger value="categories" className="py-2">Categorias</TabsTrigger>
+          <TabsTrigger value="paymentMethods" className="py-2">Pagamentos</TabsTrigger>
+          <TabsTrigger value="backup" className="py-2">Backup</TabsTrigger>
         </TabsList>
 
         {/* Sub-aba 1: Grupos Orçamentários */}
@@ -406,6 +413,21 @@ export function SettingsSection({
             </TabsContent>
           );
         })}
+
+        {/* Sub-aba 4: Backup e Portabilidade */}
+        <TabsContent value="backup">
+          <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-card">
+            <div>
+              <h3 className="text-sm font-bold">Exportar e restaurar dados</h3>
+              <p className="text-xs text-muted-foreground">
+                Baixe uma cópia completa em JSON para portabilidade ou restaure um arquivo de backup anterior (v1, v2 ou v3).
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <BackupControls exportBackup={exportBackup} restoreBackup={restoreBackup} />
+            </div>
+          </div>
+        </TabsContent>
       </Tabs>
     </section>
   );
