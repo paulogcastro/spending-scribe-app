@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Loader2, Wallet } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { BrandLogo } from '@/components/BrandLogo';
 import type { useCloudAuth } from '@/hooks/useCloudAuth';
 
 export function AuthGateScreen({ auth }: { auth: ReturnType<typeof useCloudAuth> }) {
@@ -48,36 +49,48 @@ export function AuthGateScreen({ auth }: { auth: ReturnType<typeof useCloudAuth>
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <div className="flex justify-end p-4">
-        <ThemeToggle />
-      </div>
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
+      {/* Glow sutil de fundo */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 -top-40 mx-auto h-96 max-w-2xl rounded-full bg-primary/10 blur-3xl"
+      />
 
-      <main className="flex flex-1 items-center justify-center px-4 pb-12">
-        <div className="w-full max-w-md space-y-6 rounded-3xl border border-border bg-card p-6 shadow-card sm:p-8">
-          <div className="flex flex-col items-center space-y-2 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-              <Wallet className="h-6 w-6" />
+      <header className="relative z-10 flex items-center justify-between px-4 py-4 sm:px-6">
+        <div className="flex items-center gap-2.5">
+          <BrandLogo size="sm" />
+          <span className="text-sm font-bold tracking-tight">DinDin Flow</span>
+        </div>
+        <ThemeToggle />
+      </header>
+
+      <main className="relative z-10 flex flex-1 items-center justify-center px-4 pb-12 pt-4">
+        <div className="w-full max-w-md space-y-6 rounded-3xl border border-border bg-card p-6 shadow-card-hover sm:p-8">
+          <div className="flex flex-col items-center space-y-2.5 text-center">
+            <BrandLogo size="lg" />
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold tracking-tight">
+                {mode === 'login' ? 'Bem-vindo de volta' : 'Crie sua conta'}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {mode === 'login'
+                  ? 'Acesse seus ciclos financeiros e metas com segurança'
+                  : 'Comece a organizar seus ciclos financeiros na nuvem'}
+              </p>
             </div>
-            <h1 className="text-xl font-bold tracking-tight">DinDin Flow</h1>
-            <p className="text-sm text-muted-foreground">
-              {mode === 'login'
-                ? 'Entre para acessar seus ciclos financeiros na nuvem'
-                : 'Crie sua conta gratuita para salvar seus dados na nuvem'}
-            </p>
           </div>
 
           <Button
             type="button"
             variant="outline"
-            className="h-11 w-full gap-2.5 font-semibold"
+            className="h-11 w-full gap-2.5 rounded-xl font-semibold shadow-sm"
             disabled={googleLoading || submitting}
             onClick={() => void handleGoogle()}
           >
             {googleLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+              <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   fill="#4285F4"
                   d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
@@ -99,10 +112,10 @@ export function AuthGateScreen({ auth }: { auth: ReturnType<typeof useCloudAuth>
             Continuar com Google
           </Button>
 
-          <div className="relative flex items-center justify-center">
-            <span className="w-full border-t border-border" />
-            <span className="bg-card px-3 text-xs text-muted-foreground">ou com e-mail</span>
-            <span className="w-full border-t border-border" />
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">ou com e-mail</span>
+            <span className="h-px flex-1 bg-border" />
           </div>
 
           <form className="space-y-4" onSubmit={e => void handleEmailSubmit(e)}>
@@ -113,7 +126,7 @@ export function AuthGateScreen({ auth }: { auth: ReturnType<typeof useCloudAuth>
                 type="email"
                 required
                 placeholder="voce@exemplo.com"
-                className="h-11"
+                className="h-11 rounded-xl"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
               />
@@ -127,26 +140,30 @@ export function AuthGateScreen({ auth }: { auth: ReturnType<typeof useCloudAuth>
                 required
                 minLength={6}
                 placeholder="Mínimo 6 caracteres"
-                className="h-11"
+                className="h-11 rounded-xl"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
               />
             </div>
 
-            <Button type="submit" className="h-11 w-full font-semibold" disabled={submitting || googleLoading}>
+            <Button type="submit" className="h-11 w-full rounded-xl font-semibold shadow-sm" disabled={submitting || googleLoading}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {mode === 'login' ? 'Entrar' : 'Criar conta'}
             </Button>
           </form>
 
-          <div className="text-center">
+          <div className="space-y-3 border-t border-border pt-4 text-center">
             <button
               type="button"
-              className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+              className="text-xs font-semibold text-primary hover:underline"
               onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
             >
               {mode === 'login' ? 'Ainda não tem conta? Criar conta gratuita' : 'Já tem uma conta? Entrar'}
             </button>
+            <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" />
+              Seus dados financeiros ficam isolados na sua conta
+            </p>
           </div>
         </div>
       </main>

@@ -10,7 +10,7 @@ import { FixedExpenseSection } from '@/components/FixedExpenseSection';
 import { InstallmentSection } from '@/components/InstallmentSection';
 import { DailyExpenseSection } from '@/components/DailyExpenseSection';
 import { SummaryPanel } from '@/components/SummaryPanel';
-import { Wallet, Copy, MoreHorizontal, History, ArrowLeft, Receipt, Target, Plus, Settings2, Loader2 } from 'lucide-react';
+import { Copy, MoreHorizontal, History, ArrowLeft, Receipt, Target, Plus, Settings2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ExpenseGoals } from '@/types/finance';
@@ -37,6 +37,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AuthControls } from '@/components/AuthControls';
 import { AuthGateScreen } from '@/components/AuthGateScreen';
+import { BrandLogo } from '@/components/BrandLogo';
 import { useCloudAuth } from '@/hooks/useCloudAuth';
 
 const Index = () => {
@@ -141,9 +142,7 @@ const Index = () => {
         <div className="container py-3.5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-                <Wallet className="h-5 w-5" />
-              </div>
+              <BrandLogo size="md" />
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-base font-bold tracking-tight sm:text-lg">DinDin Flow</h1>

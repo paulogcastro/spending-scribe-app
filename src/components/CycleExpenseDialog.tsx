@@ -65,7 +65,7 @@ export function CycleExpenseDialog({ editor, onChange, onClose, cycleId, periodL
               <Label htmlFor="cycle-expense-description">Descrição</Label>
               <Input className="h-11" id="cycle-expense-description" required value={editor.input.description} onChange={event => change({ description: event.target.value })} autoFocus />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="cycle-expense-group">Grupo</Label>
               <Select
                 disabled={Boolean(editor.id)}
@@ -86,7 +86,7 @@ export function CycleExpenseDialog({ editor, onChange, onClose, cycleId, periodL
               </Select>
             </div>
             {!editor.id && allowedNatures.length > 1 && (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="cycle-expense-nature">Tipo de despesa</Label>
                 <Select
                   value={nature}
@@ -106,26 +106,26 @@ export function CycleExpenseDialog({ editor, onChange, onClose, cycleId, periodL
               </div>
             )}
             <div className="form-wide grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="cycle-expense-amount">
                   {nature === 'parcelado' ? 'Valor de cada parcela' : nature === 'recorrente' ? 'Valor de referência' : 'Valor'}
                 </Label>
                 <CurrencyInput className="h-11" id="cycle-expense-amount" value={editor.input.amount} onChange={amount => change({ amount })} required />
               </div>
               {nature === 'avulso' ? (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="cycle-expense-date">Data</Label>
                   <Input className="h-11" id="cycle-expense-date" type="date" required value={editor.input.date} onChange={event => change({ date: event.target.value })} />
                 </div>
               ) : (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="cycle-expense-start">{nature === 'parcelado' ? 'Ciclo da primeira parcela' : 'Ciclo inicial'}</Label>
                   <Input className="h-11" id="cycle-expense-start" type="month" required value={schedule.startCycleId.slice(0, 7)} onChange={event => changeSchedule({ startCycleId: `${event.target.value}-04` })} />
                 </div>
               )}
             </div>
             {nature !== 'avulso' && (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="cycle-expense-count">{nature === 'recorrente' ? 'Dia de referência' : 'Quantidade total de parcelas'}</Label>
                 <Input
                   className="h-11"
