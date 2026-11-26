@@ -113,6 +113,17 @@ export function setDistributionPercent(plan: CyclePlanning, group: BudgetGroup, 
   return { ...plan, distribution: { ...plan.distribution, [group]: roundMoney(value) } };
 }
 
+export function setDistributionAmount(plan: CyclePlanning, group: BudgetGroup, amount: number): CyclePlanning {
+  assertMoney(amount, 'O valor da submeta não pode ser negativo.');
+  const main = mainExpenseGoal(plan);
+  if (main <= 0) {
+    if (amount === 0) return setDistributionPercent(plan, group, 0);
+    throw new Error('Defina o salário planejado e o limite de despesas antes de distribuir valores.');
+  }
+  const percent = roundMoney((amount / main) * 100);
+  return setDistributionPercent(plan, group, percent);
+}
+
 export function addExtraIncome(plan: CyclePlanning, item: { description: string; amount: number }): CyclePlanning {
   const description = item.description.trim();
   if (!description) throw new Error('A renda extra precisa de uma descrição.');

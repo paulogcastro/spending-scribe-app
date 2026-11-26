@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Car, Home, Receipt, Plus, Pencil, Trash2, Repeat2, CreditCard, BarChart3 } from 'lucide-react';
+import { Car, Home, Receipt, Plus, Pencil, Trash2, Repeat2, CreditCard, PieChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { CurrencyInput } from '@/components/ui/currency-input';
@@ -14,22 +14,62 @@ import { CycleCommitments } from '@/components/CycleCommitments';
 import { getFinancialCycle } from '@/lib/financialCycles';
 
 const areas = [
-  { group: 'carro', label: 'Carro', icon: Car, badgeClass: 'bg-category-transport/15 text-category-transport' },
-  { group: 'casa', label: 'Casa', icon: Home, badgeClass: 'bg-warning/15 text-warning' },
-  { group: 'fixos', label: 'Gastos fixos', icon: Repeat2, badgeClass: 'bg-category-entertainment/15 text-category-entertainment' },
-  { group: 'parcelados', label: 'Parcelados', icon: CreditCard, badgeClass: 'bg-category-shopping/15 text-category-shopping' },
-  { group: 'diarias', label: 'Gastos diários', icon: Receipt, badgeClass: 'bg-primary/10 text-primary' },
+  {
+    group: 'casa',
+    label: 'Casa',
+    icon: Home,
+    cardClass: 'group-card-casa',
+    badgeClass: 'bg-warning/15 text-warning',
+    barClass: 'bg-warning',
+    spanClass: '',
+  },
+  {
+    group: 'carro',
+    label: 'Carro',
+    icon: Car,
+    cardClass: 'group-card-carro',
+    badgeClass: 'bg-category-transport/15 text-category-transport',
+    barClass: 'bg-category-transport',
+    spanClass: '',
+  },
+  {
+    group: 'fixos',
+    label: 'Gastos fixos',
+    icon: Repeat2,
+    cardClass: 'group-card-fixos',
+    badgeClass: 'bg-category-entertainment/15 text-category-entertainment',
+    barClass: 'bg-category-entertainment',
+    spanClass: '',
+  },
+  {
+    group: 'parcelados',
+    label: 'Parcelados',
+    icon: CreditCard,
+    cardClass: 'group-card-parcelados',
+    badgeClass: 'bg-category-shopping/15 text-category-shopping',
+    barClass: 'bg-category-shopping',
+    spanClass: '',
+  },
+  {
+    group: 'diarias',
+    label: 'Gastos diários',
+    icon: Receipt,
+    cardClass: 'group-card-diarias',
+    badgeClass: 'bg-destructive/15 text-destructive',
+    barClass: 'bg-destructive',
+    spanClass: 'lg:col-span-2',
+  },
 ] as const;
 
-const categoryBarPalette = [
-  'bg-primary',
-  'bg-category-transport',
-  'bg-warning',
-  'bg-category-entertainment',
-  'bg-category-shopping',
-  'bg-category-health',
-  'bg-investment',
-  'bg-category-other',
+const donutPalette = [
+  { stroke: 'hsl(var(--primary))', dot: 'bg-primary' },
+  { stroke: 'hsl(var(--category-transport))', dot: 'bg-category-transport' },
+  { stroke: 'hsl(var(--warning))', dot: 'bg-warning' },
+  { stroke: 'hsl(var(--category-entertainment))', dot: 'bg-category-entertainment' },
+  { stroke: 'hsl(var(--category-shopping))', dot: 'bg-category-shopping' },
+  { stroke: 'hsl(var(--category-health))', dot: 'bg-category-health' },
+  { stroke: 'hsl(var(--investment))', dot: 'bg-investment' },
+  { stroke: 'hsl(var(--category-other))', dot: 'bg-category-other' },
 ] as const;
 
 export function CycleExpenses({
@@ -49,12 +89,16 @@ export function CycleExpenses({
 }) {
   const [pending, setPending] = useState<ExpenseOccurrence | null>(null);
   const [correction, setCorrection] = useState<{ item: ExpenseOccurrence; amount: number } | null>(null);
+  const [chartOpen, setChartOpen] = useState(false);
+  const [commitmentsOpen, setCommitmentsOpen] = useState(false);
+
   const todayCycle = getFinancialCycle().id;
   const realized = domain.state.cycles[cycleId] ?? [];
   const projected = cycleId > todayCycle
     ? plannedCommitments(domain.state, cycleId).filter(item => !realized.some(value => value.definitionId === item.definitionId))
     : [];
   const categoryBreakdown = computeCategoryBreakdown(domain.state, cycleId);
+  const categoryTotal = categoryBreakdown.reduce((sum, item) => sum + item.amount, 0);
 
   return (
     <section aria-label="Despesas do ciclo" className="space-y-4">
@@ -63,7 +107,17 @@ export function CycleExpenses({
           <h2 className="text-lg font-semibold">Lançamentos do ciclo</h2>
           <p className="text-xs text-muted-foreground">{periodLabel}</p>
         </div>
-        <ExpenseCatalogs domain={domain} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setChartOpen(true)}>
+            <PieChart className="mr-1.5 h-4 w-4" />
+            Por categoria
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setCommitmentsOpen(true)}>
+            <Repeat2 className="mr-1.5 h-4 w-4" />
+            Recorrências e parcelas
+          </Button>
+          <ExpenseCatalogs domain={domain} />
+        </div>
       </div>
 
       {domain.readOnly && (
@@ -72,57 +126,9 @@ export function CycleExpenses({
         </div>
       )}
 
-      {/* Gráfico de Gastos por Categoria */}
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-              <BarChart3 className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold">Gastos por categoria</h3>
-              <p className="text-xs text-muted-foreground">Distribuição dos lançamentos realizados no ciclo</p>
-            </div>
-          </div>
-          {categoryBreakdown.length > 0 && (
-            <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground tabular-nums">
-              {categoryBreakdown.length} {categoryBreakdown.length === 1 ? 'categoria' : 'categorias'}
-            </span>
-          )}
-        </div>
-
-        {categoryBreakdown.length === 0 ? (
-          <p className="py-2 text-xs text-muted-foreground">
-            Adicione despesas neste ciclo para visualizar a distribuição por categoria.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {categoryBreakdown.map((entry, index) => {
-              const barColor = categoryBarPalette[index % categoryBarPalette.length];
-              return (
-                <div key={entry.categoryId} className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="truncate font-medium text-foreground">{entry.name}</span>
-                    <span className="shrink-0 tabular-nums text-muted-foreground">
-                      <strong className="font-semibold text-foreground">{formatCurrency(entry.amount)}</strong> · {entry.percent}%
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className={`h-full rounded-full transition-all ${barColor}`}
-                      style={{ width: `${Math.max(entry.percent, 2)}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Cards por Grupo Orçamentário */}
-      <div className="space-y-4">
-        {areas.map(({ group, label, icon: Icon, badgeClass }) => {
+      {/* Cards por Grupo Orçamentário (2 colunas no desktop, com cores sutis por grupo) */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {areas.map(({ group, label, icon: Icon, cardClass, badgeClass, barClass, spanClass }) => {
           const items = [...realized, ...projected]
             .filter(item => item.group === group)
             .sort((a, b) => b.date.localeCompare(a.date));
@@ -132,39 +138,40 @@ export function CycleExpenses({
           const groupRatio = groupGoal > 0 ? Math.min(100, Math.round((total / groupGoal) * 100)) : 0;
           const isOverGroupGoal = groupGoal > 0 && total > groupGoal;
           const isNearGroupGoal = !isOverGroupGoal && groupGoal > 0 && groupRatio >= 85;
+          const isManualGroup = group === 'carro' || group === 'casa' || group === 'diarias';
 
           return (
             <section
               key={group}
               aria-label={`${label} do ciclo`}
-              className="overflow-hidden rounded-2xl border border-border bg-card shadow-card"
+              className={`overflow-hidden rounded-2xl border shadow-card transition-shadow hover:shadow-card-hover ${cardClass} ${spanClass}`}
             >
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-5 py-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${badgeClass}`}>
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm ${badgeClass}`}>
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-sm font-bold">{label}</h3>
                       {forecast > 0 && (
-                        <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground tabular-nums">
+                        <span className="rounded-full bg-card/80 px-2 py-0.5 text-xs font-medium text-muted-foreground tabular-nums">
                           Previsto: {formatCurrency(forecast)}
                         </span>
                       )}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       {groupGoal > 0 && (
-                        <div className="h-1.5 w-24 overflow-hidden rounded-full bg-secondary">
+                        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-secondary/80">
                           <div
                             className={`h-full rounded-full ${
-                              isOverGroupGoal ? 'bg-destructive' : isNearGroupGoal ? 'bg-warning' : 'bg-primary'
+                              isOverGroupGoal ? 'bg-destructive' : isNearGroupGoal ? 'bg-warning' : barClass
                             }`}
                             style={{ width: `${groupRatio}%` }}
                           />
                         </div>
                       )}
-                      <span className={`text-xs tabular-nums ${isOverGroupGoal ? 'font-medium text-destructive' : 'text-muted-foreground'}`}>
+                      <span className={`text-xs tabular-nums ${isOverGroupGoal ? 'font-semibold text-destructive' : 'text-muted-foreground'}`}>
                         <strong className="font-semibold text-foreground">{formatCurrency(total)}</strong>
                         {groupGoal > 0 ? ` de ${formatCurrency(groupGoal)}` : ' realizado'}
                       </span>
@@ -172,16 +179,29 @@ export function CycleExpenses({
                   </div>
                 </div>
 
-                {(group === 'carro' || group === 'casa' || group === 'diarias') && (
+                {isManualGroup ? (
                   <Button
                     variant="outline"
                     size="sm"
+                    className="bg-card/85 hover:bg-card"
                     disabled={domain.readOnly}
                     onClick={() => onAdd(group)}
                     aria-label={`Adicionar despesa em ${label}`}
                   >
                     <Plus className="mr-1 h-4 w-4" />
                     Adicionar
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-card/85 hover:bg-card"
+                    disabled={domain.readOnly}
+                    onClick={() => setCommitmentsOpen(true)}
+                    aria-label={`Gerenciar ${label}`}
+                  >
+                    <Plus className="mr-1 h-4 w-4" />
+                    {group === 'fixos' ? 'Recorrente' : 'Parcelamento'}
                   </Button>
                 )}
               </div>
@@ -191,20 +211,20 @@ export function CycleExpenses({
                   Nenhum lançamento registrado em <strong className="font-medium text-foreground">{label}</strong> neste ciclo.
                 </div>
               ) : (
-                <ul className="divide-y divide-border">
+                <ul className="divide-y divide-border/60">
                   {items.map(item => {
                     const isProjected = projected.includes(item);
                     const categoryName = domain.state.categories[item.categoryId]?.name;
                     const paymentName = domain.state.paymentMethods[item.paymentMethodId]?.name;
                     return (
-                      <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-secondary/30">
+                      <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-card/50">
                         <div className="min-w-0 flex-1 basis-48 space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="break-words text-sm font-semibold">{item.description}</p>
                             <span
                               className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
                                 item.nature === 'avulso'
-                                  ? 'bg-secondary text-muted-foreground'
+                                  ? 'bg-secondary/90 text-muted-foreground'
                                   : 'bg-primary/10 text-primary'
                               }`}
                             >
@@ -233,13 +253,13 @@ export function CycleExpenses({
                             {categoryName && (
                               <>
                                 <span>·</span>
-                                <span className="rounded-md bg-secondary px-1.5 py-0.5 font-medium text-foreground">
+                                <span className="rounded-md bg-card/90 px-1.5 py-0.5 font-medium text-foreground">
                                   {categoryName}
                                 </span>
                               </>
                             )}
                             {paymentName && (
-                              <span className="rounded-md bg-secondary/70 px-1.5 py-0.5">
+                              <span className="rounded-md bg-secondary/80 px-1.5 py-0.5">
                                 {paymentName}
                               </span>
                             )}
@@ -263,7 +283,7 @@ export function CycleExpenses({
                             disabled={domain.readOnly || isProjected}
                             onClick={() => {
                               if (item.nature !== 'avulso') setCorrection({ item, amount: item.amount });
-                              else if (group === 'carro' || group === 'casa' || group === 'diarias') onEdit(item);
+                              else if (isManualGroup) onEdit(item);
                             }}
                           >
                             <Pencil className="h-4 w-4" />
@@ -292,9 +312,86 @@ export function CycleExpenses({
         })}
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
-        <CycleCommitments domain={domain} cycleId={cycleId} />
-      </div>
+      {/* Modal: Gráfico Donut de Gastos por Categoria */}
+      <Dialog open={chartOpen} onOpenChange={setChartOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PieChart className="h-5 w-5 text-primary" />
+              Gastos por categoria
+            </DialogTitle>
+            <DialogDescription>{periodLabel} · Lançamentos realizados no ciclo</DialogDescription>
+          </DialogHeader>
+
+          {categoryBreakdown.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Adicione despesas neste ciclo para visualizar a distribuição por categoria.
+            </p>
+          ) : (
+            <div className="space-y-5">
+              <div className="flex items-center justify-center py-2">
+                <div className="relative flex items-center justify-center">
+                  <svg width="180" height="180" viewBox="0 0 42 42" className="-rotate-90" role="img" aria-label="Gráfico de gastos por categoria">
+                    <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="hsl(var(--secondary))" strokeWidth="5" />
+                    {(() => {
+                      let offset = 0;
+                      return categoryBreakdown.map((entry, index) => {
+                        const pct = categoryTotal > 0 ? (entry.amount / categoryTotal) * 100 : 0;
+                        const currentOffset = offset;
+                        offset += pct;
+                        return (
+                          <circle
+                            key={entry.categoryId}
+                            cx="21"
+                            cy="21"
+                            r="15.915"
+                            fill="transparent"
+                            stroke={donutPalette[index % donutPalette.length].stroke}
+                            strokeWidth="5"
+                            strokeDasharray={`${pct} ${100 - pct}`}
+                            strokeDashoffset={-currentOffset}
+                          />
+                        );
+                      });
+                    })()}
+                  </svg>
+                  <div className="absolute text-center">
+                    <p className="text-xs text-muted-foreground">Total</p>
+                    <p className="text-sm font-bold tabular-nums">{formatCurrency(categoryTotal)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <ul className="max-h-60 space-y-2.5 overflow-y-auto pr-1 text-xs">
+                {categoryBreakdown.map((entry, index) => (
+                  <li key={entry.categoryId} className="flex items-center justify-between gap-2">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${donutPalette[index % donutPalette.length].dot}`} />
+                      <span className="truncate font-medium text-foreground">{entry.name}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">
+                      <strong className="font-semibold text-foreground">{formatCurrency(entry.amount)}</strong> ({entry.percent}%)
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Gerenciar Recorrências e Parcelamentos */}
+      <Dialog open={commitmentsOpen} onOpenChange={setCommitmentsOpen}>
+        <DialogContent className="max-h-[90dvh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Recorrências e parcelamentos</DialogTitle>
+            <DialogDescription>
+              Cadastre novos compromissos, ajuste valores futuros, suspenda ou consulte a previsão dos próximos 12 ciclos.
+            </DialogDescription>
+          </DialogHeader>
+          <CycleCommitments domain={domain} cycleId={cycleId} />
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={correction !== null} onOpenChange={open => { if (!open) setCorrection(null); }}>
         <DialogContent>
