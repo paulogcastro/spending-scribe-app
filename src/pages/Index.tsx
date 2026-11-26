@@ -22,6 +22,7 @@ import { CycleOverview } from '@/components/CycleOverview';
 import { CycleExpenseDialog, type CycleExpenseEditor } from '@/components/CycleExpenseDialog';
 import { useExpenseDomain } from '@/hooks/useExpenseDomain';
 import { generateCycleCommitments, localExpenseDate, type ManualExpenseGroup, type ExpenseOccurrence } from '@/lib/expenseDomain';
+import { computeCycleOverview } from '@/lib/cycleOverview';
 import { getFinancialCycle } from '@/lib/financialCycles';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -146,7 +147,10 @@ const Index = () => {
             <TabsTrigger value="planning" className="gap-2"><Target className="h-4 w-4" />Planejamento</TabsTrigger>
           </TabsList>
           <TabsContent value="cycle-expenses"><CycleExpenses key={cycle.id} cycleId={cycle.id} periodLabel={periods.cycle.label} domain={domain} subgoals={cyclePlanning.derived.subgoals} onAdd={startExpense} onEdit={editExpense} /></TabsContent>
-          <TabsContent value="planning"><CyclePlanningSection key={cycle.id} cycleId={cycle.id} cyclePlanning={cyclePlanning} /></TabsContent>
+          <TabsContent value="planning">{(() => {
+            const overview = computeCycleOverview(cyclePlanning.planning, domain.state);
+            return <CyclePlanningSection key={cycle.id} cycleId={cycle.id} cyclePlanning={cyclePlanning} availableToInvest={overview.availableToInvest} totalDays={overview.pace.totalDays} />;
+          })()}</TabsContent>
         </Tabs></> : <section aria-label="Controle mensal anterior" className="space-y-6">
           <div className="space-y-4">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setShowMonthly(false)}><ArrowLeft className="h-4 w-4" />Voltar ao controle por ciclo</Button>

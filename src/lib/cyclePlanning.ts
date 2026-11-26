@@ -40,17 +40,16 @@ export function extraIncomeTotal(plan: CyclePlanning): number {
   return roundMoney(plan.extraIncomes.reduce((sum, item) => sum + item.amount, 0));
 }
 
-// O acréscimo de investimento é a soma integral das rendas extras.
-export function investmentIncrement(plan: CyclePlanning): number {
-  return extraIncomeTotal(plan);
+// Rendas extras não alteram a meta de investimento; aumentam o caixa livre do ciclo.
+export function investmentIncrement(_plan: CyclePlanning): number {
+  return 0;
 }
 
 export function totalInvestmentGoal(plan: CyclePlanning): number {
-  return roundMoney(plan.investmentBaseGoal + investmentIncrement(plan));
+  return roundMoney(plan.investmentBaseGoal);
 }
 
-// Meta principal de despesas: exclusivamente salário planejado menos meta-base.
-// Rendas extras e o acréscimo nunca entram nessa fórmula.
+// Meta principal de despesas: exclusivamente salário planejado menos meta de investimento.
 export function mainExpenseGoal(plan: CyclePlanning): number {
   return roundMoney(plan.plannedSalary - plan.investmentBaseGoal);
 }
@@ -78,10 +77,17 @@ export function computeSubgoals(plan: CyclePlanning): Record<BudgetGroup | 'diar
 }
 
 export function computePlanning(plan: CyclePlanning) {
+  const goal = totalInvestmentGoal(plan);
+  const invested = roundMoney(plan.investedAmount ?? 0);
+  const investmentDiff = roundMoney(invested - goal);
+  const investmentAchievementPercent = goal > 0 ? Math.round((invested / goal) * 100) : 0;
   return {
     extraIncomeTotal: extraIncomeTotal(plan),
     investmentIncrement: investmentIncrement(plan),
-    totalInvestmentGoal: totalInvestmentGoal(plan),
+    totalInvestmentGoal: goal,
+    investedAmount: invested,
+    investmentDiff,
+    investmentAchievementPercent,
     mainExpenseGoal: mainExpenseGoal(plan),
     subgoals: computeSubgoals(plan),
   };
@@ -101,9 +107,14 @@ export function setReceivedSalary(plan: CyclePlanning, value: number): CyclePlan
 }
 
 export function setInvestmentBaseGoal(plan: CyclePlanning, value: number): CyclePlanning {
-  assertMoney(value, 'A meta-base de investimento não pode ser negativa.');
-  if (value > plan.plannedSalary) throw new Error('A meta-base de investimento não pode ser maior que o salário planejado.');
+  assertMoney(value, 'A meta de investimento não pode ser negativa.');
+  if (value > plan.plannedSalary) throw new Error('A meta de investimento não pode ser maior que o salário planejado.');
   return { ...plan, investmentBaseGoal: roundMoney(value) };
+}
+
+export function setInvestedAmount(plan: CyclePlanning, value: number): CyclePlanning {
+  assertMoney(value, 'O valor investido não pode ser negativo.');
+  return { ...plan, investedAmount: roundMoney(value) };
 }
 
 export function setDistributionPercent(plan: CyclePlanning, group: BudgetGroup, value: number): CyclePlanning {
@@ -181,6 +192,7 @@ function parsePlan(cycleId: string, value: unknown): CyclePlanning {
   if (!plan || plan.cycleId !== cycleId) throw new Error('Planejamento de ciclo inválido.');
   const money = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0;
   if (!money(plan.plannedSalary) || !money(plan.receivedSalary) || !money(plan.investmentBaseGoal)) throw new Error('Valores de planejamento inválidos.');
+  if (plan.investedAmount !== undefined && !money(plan.investedAmount)) throw new Error('Valor investido inválido.');
   if ((plan.investmentBaseGoal as number) > (plan.plannedSalary as number)) throw new Error('Meta-base maior que o salário planejado.');
   if (!Array.isArray(plan.extraIncomes)) throw new Error('Rendas extras inválidas.');
   const extraIncomes: ExtraIncome[] = plan.extraIncomes.map(item => {
@@ -205,6 +217,7 @@ function parsePlan(cycleId: string, value: unknown): CyclePlanning {
     receivedSalary: plan.receivedSalary as number,
     extraIncomes,
     investmentBaseGoal: plan.investmentBaseGoal as number,
+    ...(plan.investedAmount !== undefined ? { investedAmount: plan.investedAmount as number } : {}),
     distribution,
   };
 }

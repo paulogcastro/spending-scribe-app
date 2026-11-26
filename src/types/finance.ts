@@ -201,8 +201,9 @@ export interface CyclePlanning {
   cycleId: string; // Mesmo identificador do FinancialCycle (YYYY-MM-DD, dia 04)
   plannedSalary: number; // Salário CLT planejado
   receivedSalary: number; // Salário efetivamente recebido (realização, nunca copiada)
-  extraIncomes: ExtraIncome[]; // Rendas extras: 100% destinadas ao acréscimo de investimento
-  investmentBaseGoal: number; // Meta-base de investimento (0..plannedSalary)
+  extraIncomes: ExtraIncome[]; // Rendas extras: aumentam o caixa livre do ciclo
+  investmentBaseGoal: number; // Meta fixa de investimento (0..plannedSalary)
+  investedAmount?: number; // Valor efetivamente investido no ciclo (realização, nunca copiada)
   distribution: Record<BudgetGroup, number>; // Percentuais 0–100
 }
 
