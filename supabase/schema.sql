@@ -11,6 +11,9 @@ create table if not exists public.user_finance_data (
 
 alter table public.user_finance_data enable row level security;
 
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on table public.user_finance_data to authenticated;
+
 drop policy if exists "Users can read own finance data" on public.user_finance_data;
 create policy "Users can read own finance data"
   on public.user_finance_data

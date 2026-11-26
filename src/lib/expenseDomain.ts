@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { adjacentCycle, createFinancialCycle, getFinancialCycle, cycleStartDate } from './financialCycles';
-import { expenseCategoryLabels } from '../types/finance';
 
 export const EXPENSE_DOMAIN_STORAGE_KEY = 'spending-scribe-expense-domain-v1';
 const id = z.string().min(1).refine(value => value.trim() === value && !['__proto__', 'constructor', 'prototype'].includes(value));
@@ -80,14 +79,20 @@ export type ExpenseDomainState = z.infer<typeof stateSchema>;
 
 // Seeds are independent catalog records, not a migration of monthly transactions.
 export function createExpenseDomainState(): ExpenseDomainState {
-  const categories = Object.fromEntries(Object.entries(expenseCategoryLabels).filter(([key]) => key !== 'investimento').map(([key, name]) => {
-    const id = `category-${key}`;
-    return [id, { id, name, active: true }];
-  }));
+  const defaultCategories: ExpenseCategoryRecord[] = [
+    { id: 'category-moradia', name: 'Moradia', active: true },
+    { id: 'category-alimentacao', name: 'Alimentação', active: true },
+    { id: 'category-transporte', name: 'Transporte', active: true },
+    { id: 'category-saude', name: 'Saúde', active: true },
+    { id: 'category-lazer', name: 'Lazer', active: true },
+    { id: 'category-educacao', name: 'Educação', active: true },
+    { id: 'category-vestuario', name: 'Vestuário', active: true },
+    { id: 'category-assinaturas', name: 'Assinaturas', active: true },
+    { id: 'category-outros', name: 'Outros', active: true },
+  ];
   const paymentMethods: PaymentMethod[] = [
-    { id: 'payment-inter', name: 'Cartão Inter', type: 'cartao_credito', active: true },
-    { id: 'payment-mercado-pago', name: 'Cartão Mercado Pago', type: 'cartao_credito', active: true },
-    { id: 'payment-mae', name: 'Cartão da mãe', type: 'cartao_credito', active: true },
+    { id: 'payment-credito', name: 'Cartão de crédito', type: 'cartao_credito', active: true },
+    { id: 'payment-debito', name: 'Cartão de débito', type: 'outros', active: true },
     { id: 'payment-pix', name: 'Pix', type: 'pix', active: true },
     { id: 'payment-dinheiro', name: 'Dinheiro', type: 'dinheiro', active: true },
     { id: 'payment-outros', name: 'Outros', type: 'outros', active: true },
@@ -95,7 +100,7 @@ export function createExpenseDomainState(): ExpenseDomainState {
   return {
     version: 1,
     cycles: {},
-    categories,
+    categories: Object.fromEntries(defaultCategories.map(value => [value.id, value])),
     paymentMethods: Object.fromEntries(paymentMethods.map(value => [value.id, value])),
     budgetGroups: defaultBudgetGroups(),
     recurringDefinitions: {},

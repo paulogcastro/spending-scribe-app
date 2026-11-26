@@ -42,7 +42,7 @@ test('indicadores usam só o ciclo indexado, suas cinco metas e reserva, sem pro
     distribution: { carro: 10, casa: 20, fixos: 10, parcelados: 10 } };
   const domain = createExpenseDomainState();
   const item: ExpenseOccurrence = { id: 'a', cycleId: plan.cycleId, description: 'Compra', amount: 60,
-    group: 'diarias', nature: 'avulso', origin: 'manual', date: '2027-01-01', categoryId: 'category-almoco', paymentMethodId: 'payment-inter' };
+    group: 'diarias', nature: 'avulso', origin: 'manual', date: '2027-01-01', categoryId: 'category-alimentacao', paymentMethodId: 'payment-credito' };
   domain.cycles[plan.cycleId] = [item, { ...item, id: 'b', group: 'casa', amount: 300 }];
   domain.cycles['2026-10-04'] = [{ ...item, id: 'c', cycleId: '2026-10-04', amount: 999 }];
   const summary = computeCycleOverview(plan, domain, local(2026, 11, 22));
