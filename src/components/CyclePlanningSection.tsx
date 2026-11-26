@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Wallet, PiggyBank, Target, Plus, Trash2, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
   setReceivedSalary,
   setInvestmentBaseGoal,
   setDistributionPercent,
+  setDistributionAmount,
 } from '@/lib/cyclePlanning';
 import { useCyclePlanning } from '@/hooks/useCyclePlanning';
 
@@ -25,6 +26,66 @@ const distributionSegmentColors = {
   parcelados: 'bg-category-shopping',
   diarias: 'bg-destructive',
 } as const;
+
+function PercentInput({
+  value,
+  disabled,
+  ariaLabel,
+  onCommit,
+}: {
+  value: number;
+  disabled?: boolean;
+  ariaLabel: string;
+  onCommit: (next: number) => void;
+}) {
+  const [text, setText] = useState(() => String(value).replace('.', ','));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(String(value).replace('.', ','));
+  }, [value, focused]);
+
+  return (
+    <div className="relative">
+      <Input
+        type="text"
+        inputMode="decimal"
+        value={text}
+        disabled={disabled}
+        aria-label={ariaLabel}
+        className="h-11 pr-7 text-right text-sm tabular-nums"
+        onFocus={e => {
+          setFocused(true);
+          e.currentTarget.select();
+        }}
+        onChange={e => {
+          const raw = e.target.value;
+          setText(raw);
+          const normalized = raw.replace(',', '.').trim();
+          if (normalized === '') return;
+          const parsed = Number(normalized);
+          if (Number.isFinite(parsed)) onCommit(parsed);
+        }}
+        onBlur={() => {
+          setFocused(false);
+          const normalized = text.replace(',', '.').trim();
+          if (normalized === '') {
+            onCommit(0);
+            setText('0');
+            return;
+          }
+          const parsed = Number(normalized);
+          if (Number.isFinite(parsed)) {
+            onCommit(parsed);
+          } else {
+            setText(String(value).replace('.', ','));
+          }
+        }}
+      />
+      <Percent className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+    </div>
+  );
+}
 
 export function CyclePlanningSection({ cycleId, cyclePlanning }: { cycleId: string; cyclePlanning: ReturnType<typeof useCyclePlanning> }) {
   const { planning, derived, mutate, readOnly } = cyclePlanning;
@@ -275,48 +336,60 @@ export function CyclePlanningSection({ cycleId, cyclePlanning }: { cycleId: stri
           </div>
         </div>
 
-        <div className="max-w-3xl space-y-2.5">
-          <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(0,1fr)] gap-3 border-b border-border pb-2 text-xs font-medium text-muted-foreground">
+        <div className="max-w-3xl space-y-3">
+          <div className="hidden sm:grid sm:grid-cols-[minmax(0,1.2fr)_7.5rem_9.5rem] gap-3 border-b border-border pb-2 text-xs font-medium text-muted-foreground">
             <span>Grupo</span>
-            <span className="text-right">Percentual</span>
-            <span className="text-right">Meta do ciclo</span>
+            <span className="text-right">Percentual (%)</span>
+            <span className="text-right">Limite no ciclo (R$)</span>
           </div>
           {BUDGET_GROUPS.map(group => (
-            <div key={group} className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(0,1fr)] items-center gap-3">
+            <div
+              key={group}
+              className="grid grid-cols-1 items-center gap-2 rounded-xl border border-border p-3 sm:grid-cols-[minmax(0,1.2fr)_7.5rem_9.5rem] sm:gap-3 sm:rounded-none sm:border-0 sm:p-0"
+            >
               <span className="flex items-center gap-2 text-sm font-medium">
                 <span className={`h-2 w-2 rounded-full ${distributionSegmentColors[group]}`} />
                 {budgetGroupLabels[group]}
               </span>
-              <div className="relative">
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={1}
+              <div>
+                <span className="mb-1 block text-xs text-muted-foreground sm:hidden">Percentual (%)</span>
+                <PercentInput
                   value={planning.distribution[group]}
-                  onChange={e => mutate(plan => setDistributionPercent(plan, group, parseFloat(e.target.value) || 0))}
-                  className="h-11 pr-6 text-right text-sm"
-                  aria-label={`Percentual de ${budgetGroupLabels[group]}`}
+                  disabled={readOnly}
+                  ariaLabel={`Percentual de ${budgetGroupLabels[group]}`}
+                  onCommit={val => mutate(plan => setDistributionPercent(plan, group, val))}
+                />
+              </div>
+              <div>
+                <span className="mb-1 block text-xs text-muted-foreground sm:hidden">Limite no ciclo (R$)</span>
+                <CurrencyInput
+                  aria-label={`Limite em reais de ${budgetGroupLabels[group]}`}
+                  value={derived.subgoals[group].amount}
+                  onChange={amount => mutate(plan => setDistributionAmount(plan, group, amount))}
+                  className="h-11 text-sm"
                   disabled={readOnly}
                 />
-                <Percent className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
               </div>
-              <span className="break-words text-right text-sm font-semibold tabular-nums">
-                {formatCurrency(derived.subgoals[group].amount)}
-              </span>
             </div>
           ))}
-          <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(0,1fr)] items-center gap-3 border-t border-border pt-3">
-            <span className="flex items-center gap-2 text-sm font-semibold">
-              <span className={`h-2 w-2 rounded-full ${distributionSegmentColors.diarias}`} />
-              {budgetGroupLabels.diarias}
-            </span>
-            <span className="text-right text-sm font-medium text-muted-foreground tabular-nums">
-              {derived.subgoals.diarias.percent}%
-            </span>
-            <span className="break-words text-right text-sm font-bold tabular-nums">
-              {formatCurrency(derived.subgoals.diarias.amount)}
-            </span>
+          <div className="grid grid-cols-1 items-center gap-2 border-t border-border pt-3 sm:grid-cols-[minmax(0,1.2fr)_7.5rem_9.5rem] sm:gap-3">
+            <div className="flex items-center justify-between gap-2 sm:justify-start">
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <span className={`h-2 w-2 rounded-full ${distributionSegmentColors.diarias}`} />
+                {budgetGroupLabels.diarias}
+              </span>
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+                Residual automático
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm font-medium text-muted-foreground tabular-nums sm:justify-end">
+              <span className="text-xs sm:hidden">Percentual:</span>
+              <span>{derived.subgoals.diarias.percent}%</span>
+            </div>
+            <div className="flex items-center justify-between text-sm font-bold tabular-nums sm:justify-end">
+              <span className="text-xs font-normal text-muted-foreground sm:hidden">Limite no ciclo:</span>
+              <span>{formatCurrency(derived.subgoals.diarias.amount)}</span>
+            </div>
           </div>
         </div>
       </div>

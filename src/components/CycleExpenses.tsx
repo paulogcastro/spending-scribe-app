@@ -15,15 +15,6 @@ import { getFinancialCycle } from '@/lib/financialCycles';
 
 const areas = [
   {
-    group: 'diarias',
-    label: 'Gastos diários',
-    icon: Receipt,
-    cardClass: 'group-card-diarias',
-    badgeClass: 'bg-destructive/15 text-destructive',
-    barClass: 'bg-destructive',
-    spanClass: '',
-  },
-  {
     group: 'casa',
     label: 'Casa',
     icon: Home,
@@ -57,6 +48,15 @@ const areas = [
     cardClass: 'group-card-parcelados',
     badgeClass: 'bg-category-shopping/15 text-category-shopping',
     barClass: 'bg-category-shopping',
+    spanClass: '',
+  },
+  {
+    group: 'diarias',
+    label: 'Gastos diários',
+    icon: Receipt,
+    cardClass: 'group-card-diarias',
+    badgeClass: 'bg-destructive/15 text-destructive',
+    barClass: 'bg-destructive',
     spanClass: 'lg:col-span-2',
   },
 ] as const;
