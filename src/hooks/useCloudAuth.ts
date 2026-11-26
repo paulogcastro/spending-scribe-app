@@ -121,6 +121,15 @@ export function useCloudAuth(syncTriggerKey: string) {
     return { needsConfirmation: !data.session };
   };
 
+  const signInWithGoogle = async () => {
+    if (!supabase) throw new Error('Supabase não configurado.');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) throw error;
+  };
+
   const signOut = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -168,6 +177,7 @@ export function useCloudAuth(syncTriggerKey: string) {
     isConfigured: isSupabaseConfigured,
     signIn,
     signUp,
+    signInWithGoogle,
     signOut,
     migrateLocalToCloud,
     skipMigrationAndStartFresh,

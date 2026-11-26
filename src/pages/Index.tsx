@@ -10,7 +10,7 @@ import { FixedExpenseSection } from '@/components/FixedExpenseSection';
 import { InstallmentSection } from '@/components/InstallmentSection';
 import { DailyExpenseSection } from '@/components/DailyExpenseSection';
 import { SummaryPanel } from '@/components/SummaryPanel';
-import { Wallet, Copy, MoreHorizontal, History, ArrowLeft, Receipt, Target, Plus, Settings2 } from 'lucide-react';
+import { Wallet, Copy, MoreHorizontal, History, ArrowLeft, Receipt, Target, Plus, Settings2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ExpenseGoals } from '@/types/finance';
@@ -36,6 +36,7 @@ import { getFinancialCycle } from '@/lib/financialCycles';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AuthControls } from '@/components/AuthControls';
+import { AuthGateScreen } from '@/components/AuthGateScreen';
 import { useCloudAuth } from '@/hooks/useCloudAuth';
 
 const Index = () => {
@@ -120,6 +121,19 @@ const Index = () => {
     copyToNextMonth(selectedYear, selectedMonth);
     toast.success('Registros mensais copiados para o próximo mês.');
   };
+
+  if (cloudAuth.isConfigured && cloudAuth.loading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <p className="text-sm">Verificando sua sessão...</p>
+      </div>
+    );
+  }
+
+  if (cloudAuth.isConfigured && !cloudAuth.user) {
+    return <AuthGateScreen auth={cloudAuth} />;
+  }
 
   return (
     <div className="min-h-screen bg-background">

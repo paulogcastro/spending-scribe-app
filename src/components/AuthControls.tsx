@@ -73,8 +73,8 @@ export function AuthControls({ auth }: { auth: ReturnType<typeof useCloudAuth> }
             title="Sair da conta"
             aria-label="Sair da conta"
           >
-            <LogOut className="h-4 w-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">Sair</span>
+            <LogOut className="mr-1.5 h-4 w-4" />
+            <span>Sair</span>
           </Button>
         </div>
       ) : (
