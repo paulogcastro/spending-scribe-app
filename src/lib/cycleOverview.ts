@@ -14,15 +14,41 @@ export function getCyclePace(cycleId: string, goal: number, spent: number, today
   const start = civilDay(cycleStartDate(cycle.startDate));
   const end = civilDay(cycleStartDate(cycle.endDate));
   const current = civilDay(today);
+  const totalDays = Math.max(1, end - start);
   const daysRemaining = Math.max(0, end - Math.max(start, current));
+  const daysElapsed = Math.min(totalDays, Math.max(0, totalDays - daysRemaining));
   const remaining = roundMoney(goal - spent);
   const daily = goal > 0 && daysRemaining > 0 ? Math.max(0, remaining) / daysRemaining : 0;
   return {
-    daysRemaining, remaining, daily: roundMoney(daily),
+    totalDays, daysElapsed, daysRemaining, remaining, daily: roundMoney(daily),
     weekly: roundMoney(daily * Math.min(7, daysRemaining)),
     hasGoal: goal > 0,
     status: current < start ? 'future' as const : current >= end ? 'closed' as const : 'current' as const,
   };
+}
+
+export interface CategoryBreakdownItem {
+  categoryId: string;
+  name: string;
+  amount: number;
+  percent: number;
+}
+
+export function computeCategoryBreakdown(domain: ExpenseDomainState, cycleId: string): CategoryBreakdownItem[] {
+  const totals = new Map<string, number>();
+  let grandTotal = 0;
+  for (const item of domain.cycles[cycleId] ?? []) {
+    totals.set(item.categoryId, roundMoney((totals.get(item.categoryId) ?? 0) + item.amount));
+    grandTotal = roundMoney(grandTotal + item.amount);
+  }
+  return Array.from(totals.entries())
+    .map(([categoryId, amount]) => ({
+      categoryId,
+      name: domain.categories[categoryId]?.name ?? 'Sem categoria',
+      amount,
+      percent: grandTotal > 0 ? Math.round((amount / grandTotal) * 100) : 0,
+    }))
+    .sort((a, b) => b.amount - a.amount);
 }
 
 export function computeCycleOverview(plan: CyclePlanning, domain: ExpenseDomainState, today = new Date()) {
