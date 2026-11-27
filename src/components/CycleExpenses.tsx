@@ -98,7 +98,7 @@ export function CycleExpenses({
           </Button>
           <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setCommitmentsOpen(true)}>
             <Repeat2 className="mr-1.5 h-4 w-4 shrink-0" />
-            <span className="truncate">Recorrências</span>
+            <span className="truncate">Recorrências e parcelas</span>
           </Button>
         </div>
       </div>
@@ -123,7 +123,6 @@ export function CycleExpenses({
           const groupRatio = groupGoal > 0 ? Math.min(100, Math.round((total / groupGoal) * 100)) : 0;
           const isOverGroupGoal = groupGoal > 0 && total > groupGoal;
           const isNearGroupGoal = !isOverGroupGoal && groupGoal > 0 && groupRatio >= 85;
-          const acceptsManual = groupRecord.active && isExpenseNatureCompatible(groupRecord.id, 'avulso', groupsMap);
           const isOddLast = visibleGroups.length % 2 === 1 && index === visibleGroups.length - 1;
 
           return (
@@ -169,31 +168,17 @@ export function CycleExpenses({
                 </div>
 
                 {groupRecord.active && (
-                  acceptsManual ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 bg-card/85 hover:bg-card"
-                      disabled={domain.readOnly}
-                      onClick={() => onAdd(groupRecord.id)}
-                      aria-label={`Adicionar despesa em ${groupRecord.name}`}
-                    >
-                      <Plus className="mr-1 h-4 w-4" />
-                      Adicionar
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 bg-card/85 hover:bg-card"
-                      disabled={domain.readOnly}
-                      onClick={() => setCommitmentsOpen(true)}
-                      aria-label={`Gerenciar ${groupRecord.name}`}
-                    >
-                      <Plus className="mr-1 h-4 w-4" />
-                      {groupRecord.allowedNatures.includes('recorrente') ? 'Recorrente' : 'Parcelamento'}
-                    </Button>
-                  )
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 bg-card/85 hover:bg-card"
+                    disabled={domain.readOnly}
+                    onClick={() => onAdd(groupRecord.id)}
+                    aria-label={`Adicionar despesa em ${groupRecord.name}`}
+                  >
+                    <Plus className="mr-1 h-4 w-4" />
+                    Adicionar
+                  </Button>
                 )}
               </div>
 
