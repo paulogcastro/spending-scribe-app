@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Share, Smartphone } from 'lucide-react';
+import { Download, PlusSquare, Share, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -77,11 +77,13 @@ export function InstallAppButton() {
         variant="outline"
         size="sm"
         onClick={() => void handleClick()}
-        title="Instalar aplicativo no dispositivo"
-        aria-label="Instalar aplicativo"
+        title="Baixar aplicativo no seu dispositivo"
+        aria-label="Baixar aplicativo"
+        className="h-9 gap-1.5 rounded-full border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary hover:bg-primary/15 hover:text-primary"
       >
-        <Smartphone className="h-4 w-4 sm:mr-1.5" />
-        <span className="hidden sm:inline">Instalar</span>
+        <Download className="h-3.5 w-3.5 shrink-0" />
+        <span className="sm:hidden">Baixar</span>
+        <span className="hidden sm:inline">Baixar app</span>
       </Button>
 
       <Dialog open={iosGuideOpen} onOpenChange={setIosGuideOpen}>
@@ -89,10 +91,10 @@ export function InstallAppButton() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Smartphone className="h-5 w-5 text-primary" />
-              Instalar no iPhone / iPad
+              Baixar no iPhone / iPad
             </DialogTitle>
             <DialogDescription>
-              O Safari exige dois toques rápidos para adicionar o DinDin Flow à sua tela inicial:
+              No Safari, siga estes 2 passos rápidos para instalar o DinDin Flow como aplicativo:
             </DialogDescription>
           </DialogHeader>
           <ol className="space-y-3 text-sm text-foreground">
@@ -101,7 +103,11 @@ export function InstallAppButton() {
                 1
               </span>
               <span>
-                Toque no ícone <strong>Compartilhar</strong> (<Share className="inline h-3.5 w-3.5" />) na barra do Safari.
+                Toque no ícone <strong>Compartilhar</strong>{' '}
+                <span className="inline-flex items-center rounded border border-border bg-secondary px-1.5 py-0.5 align-middle">
+                  <Share className="h-3.5 w-3.5 text-primary" />
+                </span>{' '}
+                na barra do Safari.
               </span>
             </li>
             <li className="flex items-start gap-2.5">
@@ -109,10 +115,20 @@ export function InstallAppButton() {
                 2
               </span>
               <span>
-                Role para baixo e toque em <strong>Adicionar à Tela de Início</strong>.
+                Role para baixo e toque em{' '}
+                <strong className="inline-flex items-center gap-1">
+                  <PlusSquare className="h-3.5 w-3.5 text-primary" />
+                  Adicionar à Tela de Início
+                </strong>
+                .
               </span>
             </li>
           </ol>
+          <DialogFooter>
+            <Button type="button" className="w-full" onClick={() => setIosGuideOpen(false)}>
+              Entendi
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
