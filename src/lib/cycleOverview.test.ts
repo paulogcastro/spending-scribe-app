@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeCycleOverview, getCyclePace } from './cycleOverview';
+import { computeCycleOverview, computeCycleReport, getCyclePace } from './cycleOverview';
 import { createEmptyPlanning } from './cyclePlanning';
 import { createExpenseDomainState, type ExpenseOccurrence } from './expenseDomain';
 
@@ -58,4 +58,42 @@ test('indicadores usam só o ciclo indexado, suas cinco metas e reserva, sem pro
   assert.equal(summary.pace.daily, 95);
   assert.equal(summary.pace.weekly, 665);
   assert.equal(domain.cycles[plan.cycleId][0].date, '2027-01-01');
+});
+
+test('computeCycleReport compara com ciclo anterior, filtra por grupo/pagamento e consolida formas de pagamento', () => {
+  const domain = createExpenseDomainState();
+  const base: ExpenseOccurrence = {
+    id: '1', cycleId: '2026-11-04', description: 'Mercado', amount: 240,
+    group: 'diarias', nature: 'avulso', origin: 'manual', date: '2026-11-10',
+    categoryId: 'category-alimentacao', paymentMethodId: 'payment-credito',
+  };
+  domain.cycles['2026-11-04'] = [
+    base,
+    { ...base, id: '2', description: 'Padaria', amount: 60, paymentMethodId: 'payment-pix' },
+    { ...base, id: '3', description: 'Aluguel', amount: 1200, group: 'fixos', nature: 'recorrente', categoryId: 'category-moradia', paymentMethodId: 'payment-pix' },
+  ];
+  domain.cycles['2026-10-04'] = [
+    { ...base, id: 'p1', cycleId: '2026-10-04', amount: 200 },
+    { ...base, id: 'p2', cycleId: '2026-10-04', group: 'fixos', nature: 'recorrente', amount: 1200, categoryId: 'category-moradia', paymentMethodId: 'payment-pix' },
+  ];
+
+  const full = computeCycleReport(domain, '2026-11-04');
+  assert.equal(full.total, 1500);
+  assert.equal(full.previousTotal, 1400);
+  assert.equal(full.deltaAmount, 100);
+  assert.equal(full.deltaPercent, 7);
+  assert.equal(full.categories[0].categoryId, 'category-moradia');
+  assert.equal(full.categories[0].deltaAmount, 0);
+  assert.equal(full.categories[1].categoryId, 'category-alimentacao');
+  assert.equal(full.categories[1].deltaAmount, 100);
+  assert.equal(full.categories[1].deltaPercent, 50);
+  assert.equal(full.paymentMethods[0].paymentMethodId, 'payment-pix');
+  assert.equal(full.paymentMethods[0].amount, 1260);
+
+  const filtered = computeCycleReport(domain, '2026-11-04', { groupId: 'diarias', paymentMethodId: 'payment-credito' });
+  assert.equal(filtered.total, 240);
+  assert.equal(filtered.previousTotal, 200);
+  assert.equal(filtered.deltaAmount, 40);
+  assert.equal(filtered.deltaPercent, 20);
+  assert.equal(filtered.categories.length, 1);
 });
