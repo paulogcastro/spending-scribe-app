@@ -21,22 +21,11 @@ import {
   type ExpenseOccurrence,
   type ManualExpenseGroup,
 } from '@/lib/expenseDomain';
-import { computeCategoryBreakdown } from '@/lib/cycleOverview';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { CycleCommitments } from '@/components/CycleCommitments';
+import { CycleCategoryReportDialog } from '@/components/CycleCategoryReportDialog';
 import { getGroupColorStyles, getGroupIcon } from '@/components/budgetGroupStyles';
 import { getFinancialCycle } from '@/lib/financialCycles';
-
-const donutPalette = [
-  { stroke: 'hsl(var(--primary))', dot: 'bg-primary' },
-  { stroke: 'hsl(var(--category-transport))', dot: 'bg-category-transport' },
-  { stroke: 'hsl(var(--warning))', dot: 'bg-warning' },
-  { stroke: 'hsl(var(--category-entertainment))', dot: 'bg-category-entertainment' },
-  { stroke: 'hsl(var(--category-shopping))', dot: 'bg-category-shopping' },
-  { stroke: 'hsl(var(--category-health))', dot: 'bg-category-health' },
-  { stroke: 'hsl(var(--investment))', dot: 'bg-investment' },
-  { stroke: 'hsl(var(--category-other))', dot: 'bg-category-other' },
-] as const;
 
 interface CommitmentEditState {
   item: ExpenseOccurrence;
@@ -75,8 +64,6 @@ export function CycleExpenses({
     ? plannedCommitments(domain.state, cycleId).filter(item => !realized.some(value => value.definitionId === item.definitionId))
     : [];
   const allItems = [...realized, ...projected];
-  const categoryBreakdown = computeCategoryBreakdown(domain.state, cycleId);
-  const categoryTotal = categoryBreakdown.reduce((sum, item) => sum + item.amount, 0);
 
   const groupsMap = getBudgetGroupsMap(domain.state);
   const activeOrdered = getOrderedBudgetGroups(domain.state);
@@ -319,73 +306,13 @@ export function CycleExpenses({
         })}
       </div>
 
-      {/* Modal: Gráfico Donut de Gastos por Categoria */}
-      <Dialog open={chartOpen} onOpenChange={setChartOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <PieChart className="h-5 w-5 text-primary" />
-              Gastos por categoria
-            </DialogTitle>
-            <DialogDescription>{periodLabel} · Lançamentos realizados no ciclo</DialogDescription>
-          </DialogHeader>
-
-          {categoryBreakdown.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              Adicione despesas neste ciclo para visualizar a distribuição por categoria.
-            </p>
-          ) : (
-            <div className="space-y-5">
-              <div className="flex items-center justify-center py-2">
-                <div className="relative flex items-center justify-center">
-                  <svg width="180" height="180" viewBox="0 0 42 42" className="-rotate-90" role="img" aria-label="Gráfico de gastos por categoria">
-                    <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="hsl(var(--secondary))" strokeWidth="5" />
-                    {(() => {
-                      let offset = 0;
-                      return categoryBreakdown.map((entry, index) => {
-                        const pct = categoryTotal > 0 ? (entry.amount / categoryTotal) * 100 : 0;
-                        const currentOffset = offset;
-                        offset += pct;
-                        return (
-                          <circle
-                            key={entry.categoryId}
-                            cx="21"
-                            cy="21"
-                            r="15.915"
-                            fill="transparent"
-                            stroke={donutPalette[index % donutPalette.length].stroke}
-                            strokeWidth="5"
-                            strokeDasharray={`${pct} ${100 - pct}`}
-                            strokeDashoffset={-currentOffset}
-                          />
-                        );
-                      });
-                    })()}
-                  </svg>
-                  <div className="absolute text-center">
-                    <p className="text-xs text-muted-foreground">Total</p>
-                    <p className="text-sm font-bold tabular-nums">{formatCurrency(categoryTotal)}</p>
-                  </div>
-                </div>
-              </div>
-
-              <ul className="max-h-60 space-y-2.5 overflow-y-auto pr-1 text-xs">
-                {categoryBreakdown.map((entry, index) => (
-                  <li key={entry.categoryId} className="flex items-center justify-between gap-2">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${donutPalette[index % donutPalette.length].dot}`} />
-                      <span className="truncate font-medium text-foreground">{entry.name}</span>
-                    </span>
-                    <span className="shrink-0 tabular-nums text-muted-foreground">
-                      <strong className="font-semibold text-foreground">{formatCurrency(entry.amount)}</strong> ({entry.percent}%)
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <CycleCategoryReportDialog
+        open={chartOpen}
+        onOpenChange={setChartOpen}
+        cycleId={cycleId}
+        periodLabel={periodLabel}
+        domainState={domain.state}
+      />
 
       {/* Modal: Gerenciar Recorrências e Parcelamentos */}
       <Dialog open={commitmentsOpen} onOpenChange={setCommitmentsOpen}>

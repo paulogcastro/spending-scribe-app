@@ -1,7 +1,7 @@
 import type { CyclePlanning } from '../types/finance';
 import { getBudgetGroupsMap, type ExpenseDomainState } from './expenseDomain';
 import { computePlanning, computeSubgoals, roundMoney } from './cyclePlanning';
-import { createFinancialCycle, cycleStartDate } from './financialCycles';
+import { adjacentCycle, createFinancialCycle, cycleStartDate } from './financialCycles';
 
 // UTC is used only to number civil days, not to interpret stored dates as instants.
 function civilDay(date: Date): number {
@@ -49,6 +49,117 @@ export function computeCategoryBreakdown(domain: ExpenseDomainState, cycleId: st
       percent: grandTotal > 0 ? Math.round((amount / grandTotal) * 100) : 0,
     }))
     .sort((a, b) => b.amount - a.amount);
+}
+
+export interface CategoryBreakdownFilter {
+  groupId?: string;
+  paymentMethodId?: string;
+}
+
+export interface CategoryReportItem {
+  categoryId: string;
+  name: string;
+  amount: number;
+  percent: number;
+  count: number;
+  previousAmount: number;
+  deltaAmount: number;
+  deltaPercent: number | null;
+}
+
+export interface PaymentBreakdownItem {
+  paymentMethodId: string;
+  name: string;
+  amount: number;
+  percent: number;
+  count: number;
+}
+
+export interface CycleReportSummary {
+  total: number;
+  previousTotal: number;
+  deltaAmount: number;
+  deltaPercent: number | null;
+  count: number;
+  categories: CategoryReportItem[];
+  paymentMethods: PaymentBreakdownItem[];
+}
+
+export function computeCycleReport(
+  domain: ExpenseDomainState,
+  cycleId: string,
+  filter: CategoryBreakdownFilter = {}
+): CycleReportSummary {
+  const matchesFilter = (item: { group: string; paymentMethodId: string }) => {
+    if (filter.groupId && item.group !== filter.groupId) return false;
+    if (filter.paymentMethodId && item.paymentMethodId !== filter.paymentMethodId) return false;
+    return true;
+  };
+
+  const currentItems = (domain.cycles[cycleId] ?? []).filter(matchesFilter);
+  const previousCycleId = adjacentCycle(cycleId, -1).id;
+  const previousItems = (domain.cycles[previousCycleId] ?? []).filter(matchesFilter);
+
+  const catTotals = new Map<string, { amount: number; count: number }>();
+  const payTotals = new Map<string, { amount: number; count: number }>();
+  let total = 0;
+
+  for (const item of currentItems) {
+    total = roundMoney(total + item.amount);
+    const cat = catTotals.get(item.categoryId) ?? { amount: 0, count: 0 };
+    catTotals.set(item.categoryId, { amount: roundMoney(cat.amount + item.amount), count: cat.count + 1 });
+
+    const pay = payTotals.get(item.paymentMethodId) ?? { amount: 0, count: 0 };
+    payTotals.set(item.paymentMethodId, { amount: roundMoney(pay.amount + item.amount), count: pay.count + 1 });
+  }
+
+  const prevCatTotals = new Map<string, number>();
+  let previousTotal = 0;
+  for (const item of previousItems) {
+    previousTotal = roundMoney(previousTotal + item.amount);
+    prevCatTotals.set(item.categoryId, roundMoney((prevCatTotals.get(item.categoryId) ?? 0) + item.amount));
+  }
+
+  const categories: CategoryReportItem[] = Array.from(catTotals.entries())
+    .map(([categoryId, stats]) => {
+      const previousAmount = prevCatTotals.get(categoryId) ?? 0;
+      const deltaAmount = roundMoney(stats.amount - previousAmount);
+      const deltaPercent = previousAmount > 0 ? Math.round((deltaAmount / previousAmount) * 100) : null;
+      return {
+        categoryId,
+        name: domain.categories[categoryId]?.name ?? 'Sem categoria',
+        amount: stats.amount,
+        percent: total > 0 ? Math.round((stats.amount / total) * 100) : 0,
+        count: stats.count,
+        previousAmount,
+        deltaAmount,
+        deltaPercent,
+      };
+    })
+    .sort((a, b) => b.amount - a.amount);
+
+  const paymentMethods: PaymentBreakdownItem[] = Array.from(payTotals.entries())
+    .map(([paymentMethodId, stats]) => ({
+      paymentMethodId,
+      name: domain.paymentMethods[paymentMethodId]?.name ?? 'Sem forma de pagamento',
+      amount: stats.amount,
+      percent: total > 0 ? Math.round((stats.amount / total) * 100) : 0,
+      count: stats.count,
+    }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const deltaAmount = roundMoney(total - previousTotal);
+  const deltaPercent = previousTotal > 0 ? Math.round((deltaAmount / previousTotal) * 100) : null;
+
+  return {
+    total,
+    previousTotal,
+    deltaAmount,
+    deltaPercent,
+    count: currentItems.length,
+    categories,
+    paymentMethods,
+  };
 }
 
 export function computeCycleOverview(plan: CyclePlanning, domain: ExpenseDomainState, today = new Date()) {
