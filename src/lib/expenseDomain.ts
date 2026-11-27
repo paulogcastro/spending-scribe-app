@@ -656,3 +656,121 @@ export function updateCommitmentFromCycle(
     [catalog]: { ...state[catalog], [definitionId]: updatedDef },
   }));
 }
+
+export interface AnticipateInstallmentInput {
+  definitionId: string;
+  selectedCycleId: string;
+  targetCycleId: string;
+  count: number;
+  paidAmount: number;
+  note?: string;
+  todayCycle?: string;
+}
+
+export function anticipateInstallment(
+  state: ExpenseDomainState,
+  input: AnticipateInstallmentInput
+): ExpenseDomainState {
+  createFinancialCycle(input.selectedCycleId);
+  createFinancialCycle(input.targetCycleId);
+  const todayCycle = input.todayCycle ?? getFinancialCycle().id;
+  createFinancialCycle(todayCycle);
+
+  const original = state.installmentDefinitions[input.definitionId];
+  if (!original) throw new Error('Parcelamento não encontrado.');
+
+  const effective = futureChangeCycle(input.selectedCycleId, todayCycle);
+  if (commitmentStatus(original, effective) === 'concluida') {
+    throw new Error('Parcelamento já concluído.');
+  }
+
+  const current = definitionAtCycle(original, effective) as InstallmentDefinition;
+  const progress = installmentProgress(current, effective);
+  if (progress.remaining <= 0) {
+    throw new Error('Não há parcelas futuras restantes para antecipar.');
+  }
+
+  if (!Number.isInteger(input.count) || input.count < 1 || input.count > progress.remaining) {
+    throw new Error(`Informe entre 1 e ${progress.remaining} parcela(s) para antecipar.`);
+  }
+
+  if (!Number.isFinite(input.paidAmount) || input.paidAmount <= 0) {
+    throw new Error('O valor pago na antecipação deve ser maior que zero.');
+  }
+
+  const nextNumber = Math.max(current.firstInstallment ?? 1, installmentNumber(current, effective));
+  const newTotal = current.totalInstallments - input.count;
+  const isFullPayoff = input.count === progress.remaining || newTotal < nextNumber;
+
+  const { revisions: ignored, ...snapshot } = current;
+  void ignored;
+
+  const revision = isFullPayoff
+    ? { ...snapshot, effectiveCycleId: effective, status: 'concluida' as const, active: false }
+    : {
+        ...snapshot,
+        effectiveCycleId: effective,
+        startDate: effective,
+        firstInstallment: nextNumber,
+        totalInstallments: newTotal,
+      };
+
+  const updatedDef: InstallmentDefinition = {
+    ...original,
+    revisions: [...(original.revisions ?? []).filter(value => value.effectiveCycleId < effective), revision],
+  };
+
+  const nextCycles: ExpenseDomainState['cycles'] = {};
+  for (const [key, items] of Object.entries(state.cycles)) {
+    nextCycles[key] = key >= effective ? items.filter(item => item.definitionId !== input.definitionId) : [...items];
+  }
+
+  const groupsMap = getBudgetGroupsMap(state);
+  const useParcelado = isExpenseNatureCompatible(current.group, 'parcelado', groupsMap);
+  const labelPrefix = isFullPayoff ? 'Quitação' : 'Antecipação';
+  const payoffDescription = `${labelPrefix}: ${current.description} (${input.count}x)`;
+  const payoffDefId = useParcelado ? crypto.randomUUID() : undefined;
+  const payoffOccurrence: ExpenseOccurrence = {
+    id: crypto.randomUUID(),
+    cycleId: input.targetCycleId,
+    description: payoffDescription,
+    amount: input.paidAmount,
+    group: current.group,
+    nature: useParcelado ? 'parcelado' : 'avulso',
+    origin: 'manual',
+    date: localExpenseDate(),
+    categoryId: current.categoryId,
+    paymentMethodId: current.paymentMethodId,
+    ...(payoffDefId ? { definitionId: payoffDefId, installment: { number: 1, total: 1 } } : {}),
+    ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+  };
+
+  nextCycles[input.targetCycleId] = [...(nextCycles[input.targetCycleId] ?? []), payoffOccurrence];
+
+  const nextInstallmentDefinitions: ExpenseDomainState['installmentDefinitions'] = {
+    ...state.installmentDefinitions,
+    [input.definitionId]: updatedDef,
+  };
+
+  if (payoffDefId) {
+    nextInstallmentDefinitions[payoffDefId] = {
+      id: payoffDefId,
+      description: payoffDescription,
+      amount: input.paidAmount,
+      group: current.group,
+      categoryId: current.categoryId,
+      paymentMethodId: current.paymentMethodId,
+      active: false,
+      status: 'concluida',
+      startDate: input.targetCycleId,
+      totalInstallments: 1,
+      ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+    };
+  }
+
+  return parseExpenseDomainState(JSON.stringify({
+    ...state,
+    cycles: nextCycles,
+    installmentDefinitions: nextInstallmentDefinitions,
+  }));
+}
