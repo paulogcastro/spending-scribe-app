@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { useExpenseDomain } from '@/hooks/useExpenseDomain';
@@ -15,6 +16,7 @@ import {
   saveBudgetGroup,
   saveExpenseCatalogRecord,
   type BudgetGroupRecord,
+  type ExpenseNature,
   type PaymentMethod,
 } from '@/lib/expenseDomain';
 import type { FinanceBackup } from '@/lib/backup';
@@ -54,6 +56,7 @@ export function SettingsSection({
     icon: string;
     color: BudgetGroupRecord['color'];
     active: boolean;
+    allowedNatures: ExpenseNature[];
   } | null>(null);
 
   const [catalogDraft, setCatalogDraft] = useState<{
@@ -132,13 +135,21 @@ export function SettingsSection({
               <div>
                 <h3 className="text-sm font-bold">Grupos orçamentários</h3>
                 <p className="text-xs text-muted-foreground">
-                  Reordene, inative ou crie novos grupos (grupos novos aceitam despesas avulsas, recorrentes e parceladas).
+                  Reordene, inative, crie novos grupos e escolha quais tipos de gasto cada grupo aceita.
                 </p>
               </div>
               <Button
                 size="sm"
                 disabled={domain.readOnly}
-                onClick={() => setGroupDraft({ name: '', icon: 'paw', color: 'cyan', active: true })}
+                onClick={() =>
+                  setGroupDraft({
+                    name: '',
+                    icon: 'paw',
+                    color: 'cyan',
+                    active: true,
+                    allowedNatures: ['avulso', 'recorrente', 'parcelado'],
+                  })
+                }
               >
                 <Plus className="mr-1.5 h-4 w-4" />
                 Novo grupo
@@ -199,6 +210,41 @@ export function SettingsSection({
                     </Select>
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Tipos de gasto aceitos neste grupo</Label>
+                  <div className="flex flex-wrap gap-3">
+                    {(['avulso', 'recorrente', 'parcelado'] as const).map(natureKey => {
+                      const checked = groupDraft.allowedNatures.includes(natureKey);
+                      const isOnlyOne = checked && groupDraft.allowedNatures.length === 1;
+                      return (
+                        <label
+                          key={natureKey}
+                          className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary/50"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            disabled={isOnlyOne}
+                            onCheckedChange={next => {
+                              const shouldAdd = next === true;
+                              const updated = shouldAdd
+                                ? [...groupDraft.allowedNatures, natureKey]
+                                : groupDraft.allowedNatures.filter(n => n !== natureKey);
+                              if (updated.length > 0) {
+                                setGroupDraft({ ...groupDraft, allowedNatures: updated });
+                              }
+                            }}
+                          />
+                          <span>{natureLabels[natureKey]}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Selecione pelo menos 1 tipo. O botão + Adicionar do grupo abrirá os campos conforme essa escolha.
+                  </p>
+                </div>
+
                 <div className="flex gap-2">
                   <Button type="submit" size="sm" disabled={domain.readOnly}>Salvar grupo</Button>
                   <Button type="button" size="sm" variant="outline" onClick={() => setGroupDraft(null)}>Cancelar</Button>
@@ -255,7 +301,16 @@ export function SettingsSection({
                         disabled={domain.readOnly}
                         aria-label={`Editar ${group.name}`}
                         title={`Editar ${group.name}`}
-                        onClick={() => setGroupDraft({ id: group.id, name: group.name, icon: group.icon, color: group.color, active: group.active })}
+                        onClick={() =>
+                          setGroupDraft({
+                            id: group.id,
+                            name: group.name,
+                            icon: group.icon,
+                            color: group.color,
+                            active: group.active,
+                            allowedNatures: [...group.allowedNatures],
+                          })
+                        }
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>

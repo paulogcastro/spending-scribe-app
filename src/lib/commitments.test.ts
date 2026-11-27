@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addCommitment, commitmentStatus, correctCommitmentOccurrence, createExpenseDomainState, definitionAtCycle, EXPENSE_DOMAIN_STORAGE_KEY, futureChangeCycle, futureCommitmentCycles, generateCycleCommitments, installmentProgress, loadExpenseDomainState, parseExpenseDomainState, plannedCommitments, reviseCommitment, saveExpenseDomainState, type CommitmentInput } from './expenseDomain';
+import { addCommitment, anticipateInstallment, commitmentStatus, correctCommitmentOccurrence, createExpenseDomainState, definitionAtCycle, EXPENSE_DOMAIN_STORAGE_KEY, futureChangeCycle, futureCommitmentCycles, generateCycleCommitments, installmentProgress, loadExpenseDomainState, parseExpenseDomainState, plannedCommitments, reviseCommitment, saveBudgetGroup, saveExpenseDomainState, type CommitmentInput } from './expenseDomain';
 import { applyBackup, buildBackup, parseBackup } from './backup';
 import { CYCLE_STORAGE_KEY, createFinancialCycle } from './financialCycles';
 
@@ -175,4 +175,85 @@ test('persistência e backup v3 restauram definições, revisões, correções e
   assert.equal(generateCycleCommitments(loadExpenseDomainState(target), nov, nov).cycles[nov].length, 1);
   assert.equal(JSON.parse(target.getItem(EXPENSE_DOMAIN_STORAGE_KEY) ?? '{}').version, 1);
   assert.equal(target.getItem('finance-tracker-data'), '{}');
+});
+
+test('anticipateInstallment antecipa parcialmente ou quita com desconto sem alterar histórico passado', () => {
+  const base = addCommitment(createExpenseDomainState(), 'parcelado', {
+    ...input,
+    description: 'Notebook',
+    group: 'parcelados',
+    amount: 200,
+    totalInstallments: 4,
+  });
+  const [defId] = Object.keys(base.installmentDefinitions);
+  const withNov = generateCycleCommitments(base, nov, nov);
+  assert.equal(withNov.cycles[nov].length, 1);
+  assert.deepEqual(withNov.cycles[nov][0].installment, { number: 1, total: 4 });
+
+  // Antecipar 1 parcela com desconto (R$ 180) no ciclo atual (nov)
+  const partial = anticipateInstallment(withNov, {
+    definitionId: defId,
+    selectedCycleId: nov,
+    targetCycleId: nov,
+    count: 1,
+    paidAmount: 180,
+    todayCycle: nov,
+  });
+  // Ocorrência original de nov (1/4) preservada + lançamento de antecipação em nov
+  assert.equal(partial.cycles[nov].length, 2);
+  assert.deepEqual(partial.cycles[nov][0].installment, { number: 1, total: 4 });
+  assert.equal(partial.cycles[nov][1].amount, 180);
+  assert.equal(partial.cycles[nov][1].description, 'Antecipação: Notebook (1x)');
+  // Em dez e jan agora restam parcelas 2/3 e 3/3; fev não tem mais parcela
+  assert.equal(plannedCommitments(partial, dec)[0].installment?.number, 2);
+  assert.equal(plannedCommitments(partial, dec)[0].installment?.total, 3);
+  assert.equal(plannedCommitments(partial, jan)[0].installment?.number, 3);
+  assert.equal(plannedCommitments(partial, '2027-02-04').length, 0);
+
+  // Quitar as 2 parcelas restantes com desconto (R$ 350)
+  const settled = anticipateInstallment(partial, {
+    definitionId: defId,
+    selectedCycleId: nov,
+    targetCycleId: nov,
+    count: 2,
+    paidAmount: 350,
+    todayCycle: nov,
+  });
+  assert.equal(commitmentStatus(settled.installmentDefinitions[defId], dec), 'concluida');
+  assert.equal(plannedCommitments(settled, dec).length, 0);
+  assert.equal(settled.cycles[nov].length, 3);
+  assert.equal(settled.cycles[nov][2].description, 'Quitação: Notebook (2x)');
+  assert.equal(settled.cycles[nov][2].amount, 350);
+});
+
+test('saveBudgetGroup permite configurar tipos de gasto aceitos e protege tipos já usados no histórico', () => {
+  const created = saveBudgetGroup(createExpenseDomainState(), {
+    name: 'Teste',
+    icon: 'paw',
+    color: 'cyan',
+    active: true,
+    allowedNatures: ['avulso', 'parcelado'],
+  });
+  const customGroup = Object.values(created.budgetGroups ?? {}).find(g => g.name === 'Teste');
+  assert.ok(customGroup);
+  assert.deepEqual(customGroup.allowedNatures, ['avulso', 'parcelado']);
+
+  const withCommitment = addCommitment(created, 'parcelado', {
+    ...input,
+    group: customGroup.id,
+    description: 'Curso',
+    totalInstallments: 2,
+  });
+  assert.throws(
+    () =>
+      saveBudgetGroup(withCommitment, {
+        id: customGroup.id,
+        name: 'Teste',
+        icon: 'paw',
+        color: 'cyan',
+        active: true,
+        allowedNatures: ['avulso'],
+      }),
+    /Não é possível desmarcar/
+  );
 });

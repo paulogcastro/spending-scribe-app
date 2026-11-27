@@ -107,7 +107,7 @@ export function CycleExpenseDialog({ editor, onChange, onClose, cycleId, periodL
             )}
             <div className="space-y-2">
               <Label htmlFor="cycle-expense-amount">
-                {nature === 'parcelado' ? 'Valor de cada parcela' : nature === 'recorrente' ? 'Valor de referência' : 'Valor'}
+                {nature === 'parcelado' ? 'Valor de cada parcela' : nature === 'recorrente' ? 'Valor por ciclo' : 'Valor'}
               </Label>
               <CurrencyInput className="h-11" id="cycle-expense-amount" value={editor.input.amount} onChange={amount => change({ amount })} required />
             </div>
@@ -118,13 +118,13 @@ export function CycleExpenseDialog({ editor, onChange, onClose, cycleId, periodL
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="cycle-expense-start">{nature === 'parcelado' ? 'Ciclo da primeira parcela' : 'Ciclo inicial'}</Label>
+                <Label htmlFor="cycle-expense-start">{nature === 'parcelado' ? 'Ciclo da primeira parcela' : 'Primeiro ciclo'}</Label>
                 <Input className="h-11" id="cycle-expense-start" type="month" required value={schedule.startCycleId.slice(0, 7)} onChange={event => changeSchedule({ startCycleId: `${event.target.value}-04` })} />
               </div>
             )}
             {nature !== 'avulso' && (
               <div className="form-wide space-y-2">
-                <Label htmlFor="cycle-expense-count">{nature === 'recorrente' ? 'Dia de referência' : 'Quantidade total de parcelas'}</Label>
+                <Label htmlFor="cycle-expense-count">{nature === 'recorrente' ? 'Dia do vencimento' : 'Quantidade total de parcelas'}</Label>
                 <Input
                   className="h-11"
                   id="cycle-expense-count"

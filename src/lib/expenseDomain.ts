@@ -268,16 +268,55 @@ export function saveExpenseCatalogRecord(state: ExpenseDomainState, catalog: 'ca
 
 export function saveBudgetGroup(
   state: ExpenseDomainState,
-  input: { id?: string; name: string; icon: string; color: BudgetGroupRecord['color']; active: boolean }
+  input: {
+    id?: string;
+    name: string;
+    icon: string;
+    color: BudgetGroupRecord['color'];
+    active: boolean;
+    allowedNatures?: ExpenseNature[];
+  }
 ): ExpenseDomainState {
   const groups = { ...getBudgetGroupsMap(state) };
+  const normalizeNatures = (list?: ExpenseNature[]): ExpenseNature[] => {
+    if (!list) return ['avulso', 'recorrente', 'parcelado'];
+    const unique = Array.from(new Set(list));
+    if (unique.length === 0) {
+      throw new Error('Selecione pelo menos um tipo de gasto para o grupo.');
+    }
+    return unique;
+  };
+
   if (input.id !== undefined) {
     const existing = groups[input.id];
     if (!existing) throw new Error('Grupo orçamentário não encontrado.');
     if ((existing.isResidual || existing.id === 'diarias') && !input.active) {
       throw new Error('O grupo Gastos diários é obrigatório e não pode ser desativado.');
     }
-    groups[input.id] = { ...existing, name: input.name.trim(), icon: input.icon, color: input.color, active: input.active };
+    const nextNatures = input.allowedNatures ? normalizeNatures(input.allowedNatures) : existing.allowedNatures;
+    const removedNatures = existing.allowedNatures.filter(n => !nextNatures.includes(n));
+    if (removedNatures.length > 0) {
+      const hasOccurrence = Object.values(state.cycles).some(items =>
+        items.some(item => item.group === input.id && removedNatures.includes(item.nature))
+      );
+      const hasRecurring =
+        removedNatures.includes('recorrente') &&
+        Object.values(state.recurringDefinitions).some(def => def.group === input.id);
+      const hasInstallment =
+        removedNatures.includes('parcelado') &&
+        Object.values(state.installmentDefinitions).some(def => def.group === input.id);
+      if (hasOccurrence || hasRecurring || hasInstallment) {
+        throw new Error('Não é possível desmarcar um tipo de gasto que já possui lançamentos ou compromissos neste grupo.');
+      }
+    }
+    groups[input.id] = {
+      ...existing,
+      name: input.name.trim(),
+      icon: input.icon,
+      color: input.color,
+      active: input.active,
+      allowedNatures: nextNatures,
+    };
   } else {
     const recordId = `group-${crypto.randomUUID().slice(0, 8)}`;
     const maxOrder = Object.values(groups)
@@ -290,7 +329,7 @@ export function saveBudgetGroup(
       color: input.color,
       order: maxOrder + 1,
       active: input.active,
-      allowedNatures: ['avulso', 'recorrente', 'parcelado'],
+      allowedNatures: normalizeNatures(input.allowedNatures),
     };
   }
   return parseExpenseDomainState(JSON.stringify({ ...state, budgetGroups: groups }));
@@ -654,5 +693,123 @@ export function updateCommitmentFromCycle(
     ...state,
     cycles: nextCycles,
     [catalog]: { ...state[catalog], [definitionId]: updatedDef },
+  }));
+}
+
+export interface AnticipateInstallmentInput {
+  definitionId: string;
+  selectedCycleId: string;
+  targetCycleId: string;
+  count: number;
+  paidAmount: number;
+  note?: string;
+  todayCycle?: string;
+}
+
+export function anticipateInstallment(
+  state: ExpenseDomainState,
+  input: AnticipateInstallmentInput
+): ExpenseDomainState {
+  createFinancialCycle(input.selectedCycleId);
+  createFinancialCycle(input.targetCycleId);
+  const todayCycle = input.todayCycle ?? getFinancialCycle().id;
+  createFinancialCycle(todayCycle);
+
+  const original = state.installmentDefinitions[input.definitionId];
+  if (!original) throw new Error('Parcelamento não encontrado.');
+
+  const effective = futureChangeCycle(input.selectedCycleId, todayCycle);
+  if (commitmentStatus(original, effective) === 'concluida') {
+    throw new Error('Parcelamento já concluído.');
+  }
+
+  const current = definitionAtCycle(original, effective) as InstallmentDefinition;
+  const progress = installmentProgress(current, effective);
+  if (progress.remaining <= 0) {
+    throw new Error('Não há parcelas futuras restantes para antecipar.');
+  }
+
+  if (!Number.isInteger(input.count) || input.count < 1 || input.count > progress.remaining) {
+    throw new Error(`Informe entre 1 e ${progress.remaining} parcela(s) para antecipar.`);
+  }
+
+  if (!Number.isFinite(input.paidAmount) || input.paidAmount <= 0) {
+    throw new Error('O valor pago na antecipação deve ser maior que zero.');
+  }
+
+  const nextNumber = Math.max(current.firstInstallment ?? 1, installmentNumber(current, effective));
+  const newTotal = current.totalInstallments - input.count;
+  const isFullPayoff = input.count === progress.remaining || newTotal < nextNumber;
+
+  const { revisions: ignored, ...snapshot } = current;
+  void ignored;
+
+  const revision = isFullPayoff
+    ? { ...snapshot, effectiveCycleId: effective, status: 'concluida' as const, active: false }
+    : {
+        ...snapshot,
+        effectiveCycleId: effective,
+        startDate: effective,
+        firstInstallment: nextNumber,
+        totalInstallments: newTotal,
+      };
+
+  const updatedDef: InstallmentDefinition = {
+    ...original,
+    revisions: [...(original.revisions ?? []).filter(value => value.effectiveCycleId < effective), revision],
+  };
+
+  const nextCycles: ExpenseDomainState['cycles'] = {};
+  for (const [key, items] of Object.entries(state.cycles)) {
+    nextCycles[key] = key >= effective ? items.filter(item => item.definitionId !== input.definitionId) : [...items];
+  }
+
+  const groupsMap = getBudgetGroupsMap(state);
+  const useParcelado = isExpenseNatureCompatible(current.group, 'parcelado', groupsMap);
+  const labelPrefix = isFullPayoff ? 'Quitação' : 'Antecipação';
+  const payoffDescription = `${labelPrefix}: ${current.description} (${input.count}x)`;
+  const payoffDefId = useParcelado ? crypto.randomUUID() : undefined;
+  const payoffOccurrence: ExpenseOccurrence = {
+    id: crypto.randomUUID(),
+    cycleId: input.targetCycleId,
+    description: payoffDescription,
+    amount: input.paidAmount,
+    group: current.group,
+    nature: useParcelado ? 'parcelado' : 'avulso',
+    origin: 'manual',
+    date: localExpenseDate(),
+    categoryId: current.categoryId,
+    paymentMethodId: current.paymentMethodId,
+    ...(payoffDefId ? { definitionId: payoffDefId, installment: { number: 1, total: 1 } } : {}),
+    ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+  };
+
+  nextCycles[input.targetCycleId] = [...(nextCycles[input.targetCycleId] ?? []), payoffOccurrence];
+
+  const nextInstallmentDefinitions: ExpenseDomainState['installmentDefinitions'] = {
+    ...state.installmentDefinitions,
+    [input.definitionId]: updatedDef,
+  };
+
+  if (payoffDefId) {
+    nextInstallmentDefinitions[payoffDefId] = {
+      id: payoffDefId,
+      description: payoffDescription,
+      amount: input.paidAmount,
+      group: current.group,
+      categoryId: current.categoryId,
+      paymentMethodId: current.paymentMethodId,
+      active: false,
+      status: 'concluida',
+      startDate: input.targetCycleId,
+      totalInstallments: 1,
+      ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+    };
+  }
+
+  return parseExpenseDomainState(JSON.stringify({
+    ...state,
+    cycles: nextCycles,
+    installmentDefinitions: nextInstallmentDefinitions,
   }));
 }

@@ -156,11 +156,11 @@
   .cycle-tabs > [role="tab"][data-state="active"] { @apply border-primary bg-transparent text-primary shadow-none; }
   .finance-form { @apply grid grid-cols-1 gap-4 sm:grid-cols-2; }
   .finance-form > div { @apply min-w-0; }
-  .finance-form > div:not(.grid) { @apply space-y-2; }
+  .finance-form > div:not(.grid):not(.form-actions) { @apply space-y-2; }
   .finance-form > .form-wide { @apply sm:col-span-2; }
   .finance-form label { @apply text-sm font-medium; }
   .finance-form [role="combobox"], .finance-form input { @apply h-11; }
-  .finance-form > .form-actions { @apply mt-2 gap-2 border-t border-border pt-4 sm:col-span-2; }
+  .finance-form > .form-actions { @apply mt-2 gap-2 border-t border-border pt-4 sm:col-span-2 sm:space-x-0; }
 
   /* Tinted budget group cards */
   .group-card-diarias {
