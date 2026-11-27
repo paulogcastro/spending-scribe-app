@@ -268,16 +268,55 @@ export function saveExpenseCatalogRecord(state: ExpenseDomainState, catalog: 'ca
 
 export function saveBudgetGroup(
   state: ExpenseDomainState,
-  input: { id?: string; name: string; icon: string; color: BudgetGroupRecord['color']; active: boolean }
+  input: {
+    id?: string;
+    name: string;
+    icon: string;
+    color: BudgetGroupRecord['color'];
+    active: boolean;
+    allowedNatures?: ExpenseNature[];
+  }
 ): ExpenseDomainState {
   const groups = { ...getBudgetGroupsMap(state) };
+  const normalizeNatures = (list?: ExpenseNature[]): ExpenseNature[] => {
+    if (!list) return ['avulso', 'recorrente', 'parcelado'];
+    const unique = Array.from(new Set(list));
+    if (unique.length === 0) {
+      throw new Error('Selecione pelo menos um tipo de gasto para o grupo.');
+    }
+    return unique;
+  };
+
   if (input.id !== undefined) {
     const existing = groups[input.id];
     if (!existing) throw new Error('Grupo orçamentário não encontrado.');
     if ((existing.isResidual || existing.id === 'diarias') && !input.active) {
       throw new Error('O grupo Gastos diários é obrigatório e não pode ser desativado.');
     }
-    groups[input.id] = { ...existing, name: input.name.trim(), icon: input.icon, color: input.color, active: input.active };
+    const nextNatures = input.allowedNatures ? normalizeNatures(input.allowedNatures) : existing.allowedNatures;
+    const removedNatures = existing.allowedNatures.filter(n => !nextNatures.includes(n));
+    if (removedNatures.length > 0) {
+      const hasOccurrence = Object.values(state.cycles).some(items =>
+        items.some(item => item.group === input.id && removedNatures.includes(item.nature))
+      );
+      const hasRecurring =
+        removedNatures.includes('recorrente') &&
+        Object.values(state.recurringDefinitions).some(def => def.group === input.id);
+      const hasInstallment =
+        removedNatures.includes('parcelado') &&
+        Object.values(state.installmentDefinitions).some(def => def.group === input.id);
+      if (hasOccurrence || hasRecurring || hasInstallment) {
+        throw new Error('Não é possível desmarcar um tipo de gasto que já possui lançamentos ou compromissos neste grupo.');
+      }
+    }
+    groups[input.id] = {
+      ...existing,
+      name: input.name.trim(),
+      icon: input.icon,
+      color: input.color,
+      active: input.active,
+      allowedNatures: nextNatures,
+    };
   } else {
     const recordId = `group-${crypto.randomUUID().slice(0, 8)}`;
     const maxOrder = Object.values(groups)
@@ -290,7 +329,7 @@ export function saveBudgetGroup(
       color: input.color,
       order: maxOrder + 1,
       active: input.active,
-      allowedNatures: ['avulso', 'recorrente', 'parcelado'],
+      allowedNatures: normalizeNatures(input.allowedNatures),
     };
   }
   return parseExpenseDomainState(JSON.stringify({ ...state, budgetGroups: groups }));

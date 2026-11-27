@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addCommitment, anticipateInstallment, commitmentStatus, correctCommitmentOccurrence, createExpenseDomainState, definitionAtCycle, EXPENSE_DOMAIN_STORAGE_KEY, futureChangeCycle, futureCommitmentCycles, generateCycleCommitments, installmentProgress, loadExpenseDomainState, parseExpenseDomainState, plannedCommitments, reviseCommitment, saveExpenseDomainState, type CommitmentInput } from './expenseDomain';
+import { addCommitment, anticipateInstallment, commitmentStatus, correctCommitmentOccurrence, createExpenseDomainState, definitionAtCycle, EXPENSE_DOMAIN_STORAGE_KEY, futureChangeCycle, futureCommitmentCycles, generateCycleCommitments, installmentProgress, loadExpenseDomainState, parseExpenseDomainState, plannedCommitments, reviseCommitment, saveBudgetGroup, saveExpenseDomainState, type CommitmentInput } from './expenseDomain';
 import { applyBackup, buildBackup, parseBackup } from './backup';
 import { CYCLE_STORAGE_KEY, createFinancialCycle } from './financialCycles';
 
@@ -224,4 +224,36 @@ test('anticipateInstallment antecipa parcialmente ou quita com desconto sem alte
   assert.equal(settled.cycles[nov].length, 3);
   assert.equal(settled.cycles[nov][2].description, 'Quitação: Notebook (2x)');
   assert.equal(settled.cycles[nov][2].amount, 350);
+});
+
+test('saveBudgetGroup permite configurar tipos de gasto aceitos e protege tipos já usados no histórico', () => {
+  const created = saveBudgetGroup(createExpenseDomainState(), {
+    name: 'Teste',
+    icon: 'paw',
+    color: 'cyan',
+    active: true,
+    allowedNatures: ['avulso', 'parcelado'],
+  });
+  const customGroup = Object.values(created.budgetGroups ?? {}).find(g => g.name === 'Teste');
+  assert.ok(customGroup);
+  assert.deepEqual(customGroup.allowedNatures, ['avulso', 'parcelado']);
+
+  const withCommitment = addCommitment(created, 'parcelado', {
+    ...input,
+    group: customGroup.id,
+    description: 'Curso',
+    totalInstallments: 2,
+  });
+  assert.throws(
+    () =>
+      saveBudgetGroup(withCommitment, {
+        id: customGroup.id,
+        name: 'Teste',
+        icon: 'paw',
+        color: 'cyan',
+        active: true,
+        allowedNatures: ['avulso'],
+      }),
+    /Não é possível desmarcar/
+  );
 });
