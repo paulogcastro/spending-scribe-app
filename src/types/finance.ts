@@ -192,6 +192,7 @@ export interface ExtraIncome {
   id: string;
   description: string;
   amount: number;
+  date?: string; // Data civil local do recebimento (YYYY-MM-DD)
 }
 
 // Grupos com percentual editável; Gastos diários é sempre o residual.

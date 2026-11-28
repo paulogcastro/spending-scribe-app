@@ -28,17 +28,19 @@ export function useCyclePlanning(cycleId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cycleId, initial.error]);
 
-  const mutate = (change: (plan: CyclePlanning) => CyclePlanning) => {
+  const mutate = (change: (plan: CyclePlanning) => CyclePlanning): boolean => {
     if (initial.error) {
       toast.error('O planejamento está em modo de leitura para preservar os dados armazenados.');
-      return;
+      return false;
     }
     try {
       const next = upsertPlanning(state, change(planning));
       savePlanningState(localStorage, next);
       setState(next);
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Não foi possível salvar o planejamento.');
+      return false;
     }
   };
 

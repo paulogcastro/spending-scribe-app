@@ -1,9 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Wallet, PiggyBank, Target, Plus, Trash2, Percent } from 'lucide-react';
+import {
+  Wallet,
+  PiggyBank,
+  Target,
+  Plus,
+  Trash2,
+  Percent,
+  Check,
+  Save,
+  AlertCircle,
+  Pencil,
+  CalendarDays,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { formatCurrency } from '@/lib/format';
 import {
   addExtraIncome,
@@ -14,12 +35,20 @@ import {
   setInvestmentBaseGoal,
   setInvestedAmount,
   setDistributionPercent,
-  setDistributionAmount,
+  computePlanning,
   computeSubgoals,
+  roundMoney,
 } from '@/lib/cyclePlanning';
-import type { BudgetGroupRecord } from '@/lib/expenseDomain';
+import { localExpenseDate, type BudgetGroupRecord } from '@/lib/expenseDomain';
 import { getGroupColorStyles } from '@/components/budgetGroupStyles';
 import { useCyclePlanning } from '@/hooks/useCyclePlanning';
+
+function formatReceiptDate(isoDate?: string): string {
+  if (!isoDate) return 'Data não informada';
+  const parts = isoDate.split('-');
+  if (parts.length !== 3) return isoDate;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
 
 function PercentInput({
   value,
@@ -58,7 +87,7 @@ function PercentInput({
           const normalized = raw.replace(',', '.').trim();
           if (normalized === '') return;
           const parsed = Number(normalized);
-          if (Number.isFinite(parsed)) onCommit(parsed);
+          if (Number.isFinite(parsed) && parsed >= 0) onCommit(parsed);
         }}
         onBlur={() => {
           setFocused(false);
@@ -69,7 +98,7 @@ function PercentInput({
             return;
           }
           const parsed = Number(normalized);
-          if (Number.isFinite(parsed)) {
+          if (Number.isFinite(parsed) && parsed >= 0) {
             onCommit(parsed);
           } else {
             setText(String(value).replace('.', ','));
@@ -79,6 +108,73 @@ function PercentInput({
       <Percent className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
     </div>
   );
+}
+
+function CardSaveFooter({
+  dirty,
+  readOnly,
+  errorMessage,
+  saveLabel = 'Salvar',
+  onSave,
+  onCancel,
+}: {
+  dirty: boolean;
+  readOnly: boolean;
+  errorMessage?: string | null;
+  saveLabel?: string;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3.5">
+      <div className="flex min-w-0 items-center gap-1.5 text-xs">
+        {errorMessage ? (
+          <span className="inline-flex items-center gap-1.5 font-medium text-destructive">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>{errorMessage}</span>
+          </span>
+        ) : !dirty ? (
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            <Check className="h-3.5 w-3.5 shrink-0 text-success" />
+            Salvo
+          </span>
+        ) : null}
+      </div>
+
+      <div className="flex items-center gap-2">
+        {dirty && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={readOnly}
+            onClick={onCancel}
+            className="h-9"
+          >
+            Cancelar
+          </Button>
+        )}
+        <Button
+          type="button"
+          size="sm"
+          variant={dirty ? 'default' : 'outline'}
+          disabled={readOnly || !dirty || Boolean(errorMessage)}
+          onClick={onSave}
+          className="h-9 gap-1.5"
+        >
+          <Save className="h-3.5 w-3.5" />
+          {saveLabel}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface ExtraIncomeEditor {
+  id?: string;
+  description: string;
+  amount: number;
+  date: string;
 }
 
 export function CyclePlanningSection({
@@ -95,206 +191,360 @@ export function CyclePlanningSection({
   totalDays?: number;
 }) {
   const { planning, derived, mutate, readOnly } = cyclePlanning;
-  const [draft, setDraft] = useState('');
-  const [isAdding, setIsAdding] = useState(false);
-  const [newItem, setNewItem] = useState({ description: '', amount: 0 });
-  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const handleAdd = () => {
-    if (!newItem.description.trim()) return;
-    mutate(plan => addExtraIncome(plan, newItem));
-    setNewItem({ description: '', amount: 0 });
-    setIsAdding(false);
-  };
+  // Draft: Renda do ciclo
+  const [salaryDraft, setSalaryDraft] = useState(planning.plannedSalary);
+  const [extraEditor, setExtraEditor] = useState<ExtraIncomeEditor | null>(null);
 
-  const editableGroups = budgetGroups.filter(g => !g.isResidual && g.id !== 'diarias');
-  const residualGroup = budgetGroups.find(g => g.isResidual || g.id === 'diarias');
-  const subgoals = computeSubgoals(planning, editableGroups.map(g => g.id));
-  const totalPercent = editableGroups.reduce((sum, group) => sum + (planning.distribution[group.id] ?? 0), 0) + (subgoals.diarias?.percent ?? 0);
+  // Draft: Meta de investimento
+  const [investmentBaseDraft, setInvestmentBaseDraft] = useState(planning.investmentBaseGoal);
+  const [investedDraft, setInvestedDraft] = useState(derived.investedAmount);
 
-  const invGoal = derived.totalInvestmentGoal;
-  const invested = derived.investedAmount;
-  const invDiff = derived.investmentDiff;
-  const invPct = derived.investmentAchievementPercent;
+  // Draft: Distribuição do orçamento
+  const [distributionDraft, setDistributionDraft] = useState<Record<string, number>>(() => ({
+    ...planning.distribution,
+  }));
+
+  useEffect(() => {
+    setSalaryDraft(planning.plannedSalary);
+  }, [planning.plannedSalary]);
+
+  useEffect(() => {
+    setInvestmentBaseDraft(planning.investmentBaseGoal);
+    setInvestedDraft(derived.investedAmount);
+  }, [planning.investmentBaseGoal, derived.investedAmount]);
+
+  useEffect(() => {
+    setDistributionDraft({ ...planning.distribution });
+  }, [planning.distribution]);
+
+  const editableGroups = useMemo(
+    () => budgetGroups.filter(g => !g.isResidual && g.id !== 'diarias'),
+    [budgetGroups]
+  );
+  const residualGroup = useMemo(
+    () => budgetGroups.find(g => g.isResidual || g.id === 'diarias'),
+    [budgetGroups]
+  );
+
+  // Dirty checks
+  const incomeDirty = salaryDraft !== planning.plannedSalary;
+
+  const investmentDirty =
+    investmentBaseDraft !== planning.investmentBaseGoal ||
+    investedDraft !== derived.investedAmount;
+
+  const distributionDirty = editableGroups.some(
+    g => roundMoney(distributionDraft[g.id] ?? 0) !== roundMoney(planning.distribution[g.id] ?? 0)
+  );
+
+  // Live previews using pure functions
+  const totalCycleIncomePreview = roundMoney(salaryDraft + derived.extraIncomeTotal);
+
+  const investmentPreview = useMemo(
+    () =>
+      computePlanning({
+        ...planning,
+        investmentBaseGoal: investmentBaseDraft,
+        investedAmount: investedDraft,
+      }),
+    [planning, investmentBaseDraft, investedDraft]
+  );
+
+  const distributionPreviewPlan = useMemo(
+    () => ({
+      ...planning,
+      distribution: { ...planning.distribution, ...distributionDraft },
+    }),
+    [planning, distributionDraft]
+  );
+
+  const editablePercentSum = roundMoney(
+    editableGroups.reduce((sum, group) => sum + (distributionDraft[group.id] ?? 0), 0)
+  );
+  const distributionOver100 = editablePercentSum > 100.001;
+
+  const subgoals = useMemo(
+    () => computeSubgoals(distributionPreviewPlan, editableGroups.map(g => g.id)),
+    [distributionPreviewPlan, editableGroups]
+  );
+
+  const totalPercent = roundMoney(
+    editablePercentSum + Math.max(0, subgoals.diarias?.percent ?? 0)
+  );
+
+  const invGoal = investmentPreview.totalInvestmentGoal;
+  const invDiff = investmentPreview.investmentDiff;
+  const invPct = investmentPreview.investmentAchievementPercent;
   const invDiffPct = invPct - 100;
 
-  const incomeInvestPct = planning.plannedSalary > 0 ? Math.round((invGoal / planning.plannedSalary) * 100) : 0;
+  const incomeInvestPct = planning.plannedSalary > 0 ? Math.round((derived.totalInvestmentGoal / planning.plannedSalary) * 100) : 0;
   const incomeExpensePct = planning.plannedSalary > 0 ? Math.max(0, 100 - incomeInvestPct) : 0;
-  const dailyAvg = totalDays > 0 ? (subgoals.diarias?.amount ?? 0) / totalDays : 0;
+  const dailyAvg = totalDays > 0 ? Math.max(0, subgoals.diarias?.amount ?? 0) / totalDays : 0;
+
+  const sortedExtraIncomes = useMemo(
+    () => [...planning.extraIncomes].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')),
+    [planning.extraIncomes]
+  );
+
+  // Handlers: Renda do ciclo
+  const handleSaveSalary = () => {
+    const ok = mutate(plan => {
+      const next = setPlannedSalary(plan, salaryDraft);
+      return setReceivedSalary(next, salaryDraft);
+    });
+    if (ok) {
+      toast.success('Salário do ciclo salvo.');
+    }
+  };
+
+  const handleCancelSalary = () => {
+    setSalaryDraft(planning.plannedSalary);
+  };
+
+  const handleSaveExtraModal = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!extraEditor) return;
+    if (!extraEditor.description.trim()) {
+      toast.error('Informe uma descrição para a renda extra.');
+      return;
+    }
+    const ok = mutate(plan => {
+      if (extraEditor.id) {
+        return updateExtraIncome(plan, extraEditor.id, {
+          description: extraEditor.description,
+          amount: extraEditor.amount,
+          date: extraEditor.date || undefined,
+        });
+      }
+      return addExtraIncome(plan, {
+        description: extraEditor.description,
+        amount: extraEditor.amount,
+        date: extraEditor.date || undefined,
+      });
+    });
+    if (ok) {
+      toast.success(extraEditor.id ? 'Renda extra atualizada.' : 'Renda extra adicionada.');
+      setExtraEditor(null);
+    }
+  };
+
+  // Handlers: Meta de investimento
+  const handleSaveInvestment = () => {
+    const ok = mutate(plan => {
+      const next = setInvestmentBaseGoal(plan, investmentBaseDraft);
+      return setInvestedAmount(next, investedDraft);
+    });
+    if (ok) {
+      toast.success('Meta de investimento salva.');
+    }
+  };
+
+  const handleCancelInvestment = () => {
+    setInvestmentBaseDraft(planning.investmentBaseGoal);
+    setInvestedDraft(derived.investedAmount);
+  };
+
+  // Handlers: Distribuição do orçamento
+  const handleSaveDistribution = () => {
+    if (distributionOver100) return;
+    const ok = mutate(plan => {
+      // Aplica reduções antes de aumentos para permitir trocas entre grupos sem ultrapassar 100% no meio
+      const orderedIds = [...editableGroups]
+        .map(g => g.id)
+        .sort((a, b) => {
+          const diffA = (distributionDraft[a] ?? 0) - (plan.distribution[a] ?? 0);
+          const diffB = (distributionDraft[b] ?? 0) - (plan.distribution[b] ?? 0);
+          return diffA - diffB;
+        });
+      let next = plan;
+      for (const groupId of orderedIds) {
+        const nextPct = roundMoney(distributionDraft[groupId] ?? 0);
+        if (nextPct !== roundMoney(next.distribution[groupId] ?? 0)) {
+          next = setDistributionPercent(next, groupId, nextPct);
+        }
+      }
+      return next;
+    });
+    if (ok) {
+      toast.success('Distribuição do orçamento salva.');
+    }
+  };
+
+  const handleCancelDistribution = () => {
+    setDistributionDraft({ ...planning.distribution });
+  };
+
+  const incomeError =
+    salaryDraft < planning.investmentBaseGoal
+      ? 'O salário do ciclo não pode ser menor que a meta de investimento.'
+      : null;
+
+  const investmentError =
+    investmentBaseDraft > planning.plannedSalary
+      ? 'Meta maior que o salário do ciclo salvo.'
+      : null;
+
+  const distributionError = distributionOver100
+    ? `A soma dos grupos está em ${editablePercentSum}% (máximo 100%).`
+    : null;
 
   return (
     <section className="space-y-4" aria-label="Planejamento do ciclo">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Card: Renda do ciclo */}
-        <div data-tour="income-card" className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-card">
-          <div className="mb-4 flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-              <Wallet className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold">Renda do ciclo</h3>
-              <p className="text-xs text-muted-foreground">Planejado define os limites · Recebido calcula o saldo em caixa</p>
-            </div>
-          </div>
-
+        <div data-tour="income-card" className="flex min-w-0 flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-card">
           <div className="space-y-4">
+            <div className="flex min-h-[2.75rem] flex-wrap items-start justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <Wallet className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">Renda do ciclo</h3>
+                  <p className="text-xs text-muted-foreground">Salário e entradas extras que compõem o ciclo</p>
+                </div>
+              </div>
+              {totalCycleIncomePreview > 0 && (
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary tabular-nums">
+                  Total: {formatCurrency(totalCycleIncomePreview)}
+                </span>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <div className="flex min-h-5 items-center justify-between gap-2">
-                  <label className="text-xs font-medium text-muted-foreground" htmlFor={`planned-salary-${cycleId}`}>
-                    Salário planejado
+                  <label className="text-xs font-medium text-muted-foreground" htmlFor={`cycle-salary-${cycleId}`}>
+                    Salário do ciclo
                   </label>
                 </div>
                 <CurrencyInput
-                  id={`planned-salary-${cycleId}`}
-                  value={planning.plannedSalary}
-                  onChange={value => mutate(plan => setPlannedSalary(plan, value))}
+                  id={`cycle-salary-${cycleId}`}
+                  value={salaryDraft}
+                  onChange={setSalaryDraft}
                   className="mt-1.5 h-11 text-sm"
                   disabled={readOnly}
                 />
               </div>
               <div>
                 <div className="flex min-h-5 items-center justify-between gap-2">
-                  <label className="text-xs font-medium text-muted-foreground" htmlFor={`received-salary-${cycleId}`}>
-                    Salário recebido
-                  </label>
-                  <button
-                    type="button"
-                    disabled={readOnly}
-                    onClick={() => mutate(plan => setReceivedSalary(plan, plan.plannedSalary))}
-                    className="whitespace-nowrap text-xs font-semibold text-primary hover:underline disabled:opacity-50"
-                  >
-                    Igual ao planejado
-                  </button>
+                  <span className="text-xs font-medium text-muted-foreground">Total de rendas extras</span>
+                  {planning.extraIncomes.length > 0 && (
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {planning.extraIncomes.length} {planning.extraIncomes.length === 1 ? 'entrada' : 'entradas'}
+                    </span>
+                  )}
                 </div>
-                <CurrencyInput
-                  id={`received-salary-${cycleId}`}
-                  value={planning.receivedSalary}
-                  onChange={value => mutate(plan => setReceivedSalary(plan, value))}
-                  className="mt-1.5 h-11 text-sm"
-                  disabled={readOnly}
-                />
+                <div className="mt-1.5 flex h-11 items-center justify-between rounded-md border border-border bg-secondary/45 px-3 text-sm font-bold text-foreground tabular-nums">
+                  <span>{formatCurrency(derived.extraIncomeTotal)}</span>
+                </div>
               </div>
             </div>
 
-            <div className="border-t border-border pt-4">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-semibold text-muted-foreground">Rendas extras</span>
-                <Button size="sm" variant="outline" aria-label="Adicionar renda extra" onClick={() => setIsAdding(true)} disabled={readOnly}>
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  Adicionar
+            <div className="space-y-2.5 border-t border-border pt-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-muted-foreground">Rendas extras do ciclo</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  aria-label="Adicionar renda extra"
+                  disabled={readOnly}
+                  onClick={() =>
+                    setExtraEditor({
+                      description: '',
+                      amount: 0,
+                      date: localExpenseDate(),
+                    })
+                  }
+                  className="h-8 gap-1.5 text-xs"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Nova renda extra
                 </Button>
               </div>
-              <div className="space-y-1">
-                {planning.extraIncomes.map(item => (
-                  <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem] items-center gap-2 py-1.5">
-                    <div className="min-w-0">
-                      {editingId === item.id ? (
-                        <Input
-                          aria-label="Descrição da renda extra"
-                          value={draft}
-                          onChange={e => setDraft(e.target.value)}
-                          onBlur={() => {
-                            if (editingId !== item.id) return;
-                            setEditingId(null);
-                            if (draft.trim() === item.description) return;
-                            if (!draft.trim()) {
-                              toast.error('A descrição não pode ficar vazia. O valor anterior foi mantido.');
-                              return;
-                            }
-                            mutate(plan => updateExtraIncome(plan, item.id, { description: draft }));
-                          }}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') e.currentTarget.blur();
-                            if (e.key === 'Escape') setEditingId(null);
-                          }}
-                          className="h-11 text-sm"
-                          autoFocus
-                        />
-                      ) : (
+
+              {sortedExtraIncomes.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
+                  Nenhuma renda extra registrada neste ciclo.
+                </p>
+              ) : (
+                <ul className="divide-y divide-border rounded-xl border border-border">
+                  {sortedExtraIncomes.map(item => (
+                    <li
+                      key={item.id}
+                      className="flex items-center justify-between gap-3 px-3 py-2.5"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{item.description}</p>
+                        <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                          <CalendarDays className="h-3 w-3 shrink-0" />
+                          <span>{formatReceiptDate(item.date)}</span>
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <span className="mr-1 text-sm font-semibold text-success tabular-nums">
+                          + {formatCurrency(item.amount)}
+                        </span>
                         <Button
+                          type="button"
+                          size="icon"
                           variant="ghost"
-                          className="h-auto min-h-11 w-full justify-start whitespace-normal break-words px-2 text-left text-sm"
+                          aria-label={`Editar ${item.description}`}
+                          title="Editar renda extra"
+                          className="h-8 w-8"
                           disabled={readOnly}
-                          title="Editar descrição da renda extra"
+                          onClick={() =>
+                            setExtraEditor({
+                              id: item.id,
+                              description: item.description,
+                              amount: item.amount,
+                              date: item.date ?? '',
+                            })
+                          }
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Remover ${item.description}`}
+                          title="Remover renda extra"
+                          className="h-8 w-8"
+                          disabled={readOnly}
                           onClick={() => {
-                            if (readOnly) return;
-                            setDraft(item.description);
-                            setEditingId(item.id);
+                            if (mutate(plan => removeExtraIncome(plan, item.id))) {
+                              toast.success('Renda extra removida.');
+                            }
                           }}
                         >
-                          {item.description}
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <CurrencyInput
-                        aria-label={`Valor de ${item.description}`}
-                        value={item.amount}
-                        onChange={value => mutate(plan => updateExtraIncome(plan, item.id, { amount: value }))}
-                        className="h-11 text-sm"
-                        disabled={readOnly}
-                      />
-                    </div>
-                    <div className="flex justify-end">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Remover ${item.description}`}
-                        className="h-11 w-11"
-                        onClick={() => mutate(plan => removeExtraIncome(plan, item.id))}
-                        disabled={readOnly}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {isAdding && (
-                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem] items-center gap-2 py-1.5">
-                    <div className="min-w-0">
-                      <Input
-                        aria-label="Descrição da nova renda extra"
-                        placeholder="Descrição"
-                        value={newItem.description}
-                        onChange={e => setNewItem({ ...newItem, description: e.target.value })}
-                        className="h-11 text-sm"
-                        autoFocus
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <CurrencyInput
-                        aria-label="Valor da nova renda extra"
-                        value={newItem.amount}
-                        onChange={value => setNewItem({ ...newItem, amount: value })}
-                        className="h-11 text-sm"
-                      />
-                    </div>
-                    <div className="flex justify-end">
-                      <Button size="icon" variant="ghost" aria-label="Confirmar renda extra" className="h-11 w-11" onClick={handleAdd}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                {planning.extraIncomes.length === 0 && !isAdding && (
-                  <p className="py-2 text-xs text-muted-foreground">Nenhuma renda extra neste ciclo.</p>
-                )}
-              </div>
-              <div className="mt-3 flex items-center justify-between rounded-xl bg-secondary/60 px-3 py-2.5">
-                <span className="text-xs font-medium text-muted-foreground">Total de rendas extras</span>
-                <span className="text-sm font-bold text-foreground tabular-nums">{formatCurrency(derived.extraIncomeTotal)}</span>
-              </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
+
+          <CardSaveFooter
+            dirty={incomeDirty}
+            readOnly={readOnly}
+            errorMessage={incomeError}
+            onSave={handleSaveSalary}
+            onCancel={handleCancelSalary}
+          />
         </div>
 
         {/* Card: Meta de investimento vs Realizado */}
-        <div data-tour="investment-card" className="flex min-w-0 flex-col justify-between gap-4 rounded-2xl border border-border bg-card p-5 shadow-card">
+        <div data-tour="investment-card" className="flex min-w-0 flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-card">
           <div className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex min-h-[2.75rem] flex-wrap items-start justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-investment/10">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-investment/10">
                   <PiggyBank className="h-4 w-4 text-investment" />
                 </div>
                 <div>
@@ -330,8 +580,8 @@ export function CyclePlanningSection({
                 </div>
                 <CurrencyInput
                   id={`base-goal-${cycleId}`}
-                  value={planning.investmentBaseGoal}
-                  onChange={value => mutate(plan => setInvestmentBaseGoal(plan, value))}
+                  value={investmentBaseDraft}
+                  onChange={setInvestmentBaseDraft}
                   className="mt-1.5 h-11 text-sm"
                   disabled={readOnly}
                 />
@@ -344,7 +594,7 @@ export function CyclePlanningSection({
                   <button
                     type="button"
                     disabled={readOnly}
-                    onClick={() => mutate(plan => setInvestedAmount(plan, plan.investmentBaseGoal))}
+                    onClick={() => setInvestedDraft(investmentBaseDraft)}
                     className="whitespace-nowrap text-xs font-semibold text-investment hover:underline disabled:opacity-50"
                   >
                     Igual à meta
@@ -352,65 +602,75 @@ export function CyclePlanningSection({
                 </div>
                 <CurrencyInput
                   id={`invested-amount-${cycleId}`}
-                  value={invested}
-                  onChange={value => mutate(plan => setInvestedAmount(plan, value))}
+                  value={investedDraft}
+                  onChange={setInvestedDraft}
                   className="mt-1.5 h-11 text-sm"
                   disabled={readOnly}
                 />
               </div>
             </div>
 
-            <div className="rounded-xl bg-secondary/50 px-3.5 py-3">
-              <div className="flex items-center justify-between gap-2 text-xs">
-                <span className="text-muted-foreground">Disponível para investir (após gastos)</span>
-                <span
-                  className={`text-sm font-bold tabular-nums ${
-                    availableToInvest >= invGoal
-                      ? 'text-success'
-                      : availableToInvest >= 0
-                        ? 'text-warning'
-                        : 'text-destructive'
+            <div className="space-y-3 border-t border-border pt-4">
+              <div className="rounded-xl bg-secondary/50 px-3.5 py-3">
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-muted-foreground">Disponível para investir (após gastos)</span>
+                  <span
+                    className={`text-sm font-bold tabular-nums ${
+                      availableToInvest >= invGoal
+                        ? 'text-success'
+                        : availableToInvest >= 0
+                          ? 'text-warning'
+                          : 'text-destructive'
+                    }`}
+                  >
+                    {formatCurrency(availableToInvest)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Atingimento da meta</span>
+                  <span className="font-bold tabular-nums">{invGoal > 0 ? `${invPct}% da meta` : 'Sem meta'}</span>
+                </div>
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      invDiff > 0 ? 'bg-success' : invDiff === 0 ? 'bg-investment' : 'bg-warning'
+                    }`}
+                    style={{ width: `${Math.min(100, Math.max(0, invPct))}%` }}
+                  />
+                </div>
+                <p
+                  className={`text-xs font-medium tabular-nums ${
+                    invGoal <= 0
+                      ? 'text-muted-foreground'
+                      : invDiff > 0
+                        ? 'text-success'
+                        : invDiff === 0
+                          ? 'text-investment'
+                          : 'text-warning'
                   }`}
                 >
-                  {formatCurrency(availableToInvest)}
-                </span>
+                  {invGoal <= 0
+                    ? 'Defina uma meta para acompanhar o atingimento.'
+                    : invDiff > 0
+                      ? `Investimento extra: ${formatCurrency(invDiff)} acima da meta!`
+                      : invDiff === 0
+                        ? 'Meta exata de investimento atingida.'
+                        : `Faltam ${formatCurrency(Math.abs(invDiff))} para atingir a meta.`}
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="space-y-2 border-t border-border pt-3">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Atingimento da meta</span>
-              <span className="font-bold tabular-nums">{invGoal > 0 ? `${invPct}% da meta` : 'Sem meta'}</span>
-            </div>
-            <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  invDiff > 0 ? 'bg-success' : invDiff === 0 ? 'bg-investment' : 'bg-warning'
-                }`}
-                style={{ width: `${Math.min(100, Math.max(0, invPct))}%` }}
-              />
-            </div>
-            <p
-              className={`text-xs font-medium tabular-nums ${
-                invGoal <= 0
-                  ? 'text-muted-foreground'
-                  : invDiff > 0
-                    ? 'text-success'
-                    : invDiff === 0
-                      ? 'text-investment'
-                      : 'text-warning'
-              }`}
-            >
-              {invGoal <= 0
-                ? 'Defina uma meta para acompanhar o atingimento.'
-                : invDiff > 0
-                  ? `Investimento extra: ${formatCurrency(invDiff)} acima da meta!`
-                  : invDiff === 0
-                    ? 'Meta exata de investimento atingida.'
-                    : `Faltam ${formatCurrency(Math.abs(invDiff))} para atingir a meta.`}
-            </p>
-          </div>
+          <CardSaveFooter
+            dirty={investmentDirty}
+            readOnly={readOnly}
+            errorMessage={investmentError}
+            onSave={handleSaveInvestment}
+            onCancel={handleCancelInvestment}
+          />
         </div>
       </div>
 
@@ -428,8 +688,14 @@ export function CyclePlanningSection({
               </p>
             </div>
           </div>
-          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary tabular-nums">
-            {totalPercent}% alocado
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold tabular-nums ${
+              distributionOver100
+                ? 'bg-destructive/10 text-destructive'
+                : 'bg-primary/10 text-primary'
+            }`}
+          >
+            {distributionOver100 ? `${editablePercentSum}% (excede 100%)` : `${totalPercent}% alocado`}
           </span>
         </div>
 
@@ -437,7 +703,7 @@ export function CyclePlanningSection({
         <div className="mb-5 space-y-2">
           <div className="flex h-3.5 w-full gap-0.5 overflow-hidden rounded-full bg-secondary" role="img" aria-label="Distribuição percentual do orçamento por grupo">
             {budgetGroups.map(group => {
-              const pct = subgoals[group.id]?.percent ?? 0;
+              const pct = Math.max(0, subgoals[group.id]?.percent ?? 0);
               if (pct <= 0) return null;
               const styles = getGroupColorStyles(group.color);
               return (
@@ -445,7 +711,7 @@ export function CyclePlanningSection({
                   key={group.id}
                   title={`${group.name}: ${pct}%`}
                   className={`h-full transition-all ${styles.barClass}`}
-                  style={{ width: `${pct}%` }}
+                  style={{ width: `${Math.min(100, pct)}%` }}
                 />
               );
             })}
@@ -456,7 +722,7 @@ export function CyclePlanningSection({
               return (
                 <span key={group.id} className="inline-flex items-center gap-1.5">
                   <span className={`h-2.5 w-2.5 rounded-full ${styles.dotClass}`} />
-                  {group.name} ({subgoals[group.id]?.percent ?? 0}%)
+                  {group.name} ({Math.max(0, subgoals[group.id]?.percent ?? 0)}%)
                 </span>
               );
             })}
@@ -473,7 +739,7 @@ export function CyclePlanningSection({
             </div>
             {editableGroups.map(group => {
               const styles = getGroupColorStyles(group.color);
-              const pct = planning.distribution[group.id] ?? 0;
+              const pct = distributionDraft[group.id] ?? 0;
               const amt = subgoals[group.id]?.amount ?? 0;
               return (
                 <div
@@ -491,7 +757,9 @@ export function CyclePlanningSection({
                         value={pct}
                         disabled={readOnly}
                         ariaLabel={`Percentual de ${group.name}`}
-                        onCommit={val => mutate(plan => setDistributionPercent(plan, group.id, val))}
+                        onCommit={val =>
+                          setDistributionDraft(prev => ({ ...prev, [group.id]: roundMoney(val) }))
+                        }
                       />
                     </div>
                     <div>
@@ -499,7 +767,16 @@ export function CyclePlanningSection({
                       <CurrencyInput
                         aria-label={`Limite em reais de ${group.name}`}
                         value={amt}
-                        onChange={amount => mutate(plan => setDistributionAmount(plan, group.id, amount))}
+                        onChange={amount => {
+                          if (derived.mainExpenseGoal <= 0) {
+                            if (amount > 0) {
+                              toast.error('Defina e salve o salário do ciclo antes de distribuir valores.');
+                            }
+                            return;
+                          }
+                          const nextPct = roundMoney((amount / derived.mainExpenseGoal) * 100);
+                          setDistributionDraft(prev => ({ ...prev, [group.id]: nextPct }));
+                        }}
                         className="h-11 text-sm"
                         disabled={readOnly}
                       />
@@ -520,11 +797,11 @@ export function CyclePlanningSection({
               </div>
               <div className="flex items-center justify-between text-sm font-medium text-muted-foreground tabular-nums sm:justify-end">
                 <span className="text-xs sm:hidden">Percentual:</span>
-                <span>{subgoals.diarias?.percent ?? 0}%</span>
+                <span>{Math.max(0, subgoals.diarias?.percent ?? 0)}%</span>
               </div>
               <div className="flex items-center justify-between text-sm font-bold tabular-nums sm:justify-end">
                 <span className="text-xs font-normal text-muted-foreground sm:hidden">Limite no ciclo:</span>
-                <span>{formatCurrency(subgoals.diarias?.amount ?? 0)}</span>
+                <span>{formatCurrency(Math.max(0, subgoals.diarias?.amount ?? 0))}</span>
               </div>
             </div>
           </div>
@@ -538,12 +815,12 @@ export function CyclePlanningSection({
 
             <div className="space-y-2.5 text-xs">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground">Salário planejado</span>
+                <span className="text-muted-foreground">Salário do ciclo</span>
                 <span className="font-semibold tabular-nums">{formatCurrency(planning.plannedSalary)}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-muted-foreground">(-) Reserva de investimento</span>
-                <span className="font-semibold text-investment tabular-nums">- {formatCurrency(invGoal)}</span>
+                <span className="font-semibold text-investment tabular-nums">- {formatCurrency(derived.totalInvestmentGoal)}</span>
               </div>
               <div className="flex items-center justify-between gap-2 border-t border-border pt-2.5">
                 <span className="font-semibold text-foreground">(=) Limite de despesas</span>
@@ -570,7 +847,68 @@ export function CyclePlanningSection({
             </div>
           </aside>
         </div>
+
+        <CardSaveFooter
+          dirty={distributionDirty}
+          readOnly={readOnly}
+          errorMessage={distributionError}
+          onSave={handleSaveDistribution}
+          onCancel={handleCancelDistribution}
+        />
       </div>
+
+      {/* Modal: Nova / Editar renda extra */}
+      <Dialog open={extraEditor !== null} onOpenChange={open => { if (!open) setExtraEditor(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{extraEditor?.id ? 'Editar renda extra' : 'Nova renda extra'}</DialogTitle>
+            <DialogDescription>
+              Entradas extras somam ao saldo disponível do ciclo sem alterar o limite de gastos.
+            </DialogDescription>
+          </DialogHeader>
+          {extraEditor && (
+            <form className="finance-form" onSubmit={handleSaveExtraModal}>
+              <div className="form-wide">
+                <Label htmlFor="extra-income-description">Descrição</Label>
+                <Input
+                  id="extra-income-description"
+                  required
+                  placeholder="Ex.: Freelance, 13º salário, Venda"
+                  value={extraEditor.description}
+                  onChange={e => setExtraEditor({ ...extraEditor, description: e.target.value })}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <Label htmlFor="extra-income-amount">Valor recebido</Label>
+                <CurrencyInput
+                  id="extra-income-amount"
+                  required
+                  value={extraEditor.amount}
+                  onChange={amount => setExtraEditor({ ...extraEditor, amount })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="extra-income-date">Data do recebimento</Label>
+                <Input
+                  id="extra-income-date"
+                  type="date"
+                  value={extraEditor.date}
+                  onChange={e => setExtraEditor({ ...extraEditor, date: e.target.value })}
+                />
+              </div>
+              <DialogFooter className="form-actions">
+                <Button type="button" variant="outline" onClick={() => setExtraEditor(null)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={readOnly}>
+                  Salvar renda extra
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
