@@ -97,3 +97,32 @@ test('computeCycleReport compara com ciclo anterior, filtra por grupo/pagamento 
   assert.equal(filtered.deltaPercent, 20);
   assert.equal(filtered.categories.length, 1);
 });
+
+test('computeCycleOverview usa salário planejado no saldo quando salário recebido ainda está zerado', () => {
+  const plan = {
+    ...createEmptyPlanning('2026-11-04'),
+    plannedSalary: 5000,
+    receivedSalary: 0,
+    investmentBaseGoal: 1000,
+    extraIncomes: [{ id: 'extra-1', description: 'Bônus', amount: 300 }],
+  };
+  const domain = createExpenseDomainState();
+  domain.cycles['2026-11-04'] = [
+    {
+      id: 'exp-1',
+      cycleId: '2026-11-04',
+      description: 'Mercado',
+      amount: 800,
+      group: 'diarias',
+      nature: 'avulso',
+      origin: 'manual',
+      date: '2026-11-10',
+      categoryId: 'category-alimentacao',
+      paymentMethodId: 'payment-pix',
+    },
+  ];
+  const summary = computeCycleOverview(plan, domain, local(2026, 11, 15));
+  assert.equal(summary.income, 5300);
+  assert.equal(summary.balanceAfterReserve, 3500);
+  assert.equal(summary.availableToInvest, 4500);
+});

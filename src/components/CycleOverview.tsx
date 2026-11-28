@@ -41,6 +41,8 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
 
   const timeProgress = pace.totalDays > 0 ? Math.min(100, Math.round((pace.daysElapsed / pace.totalDays) * 100)) : 0;
 
+  const orderedGroups = getOrderedBudgetGroups(domain);
+
   return (
     <section aria-label="Acompanhamento do ciclo" className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
@@ -188,7 +190,7 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
           <span className="flex items-center gap-2">
             <span>Metas por grupo e detalhes do ciclo</span>
             <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-normal text-muted-foreground">
-              5 grupos
+              {orderedGroups.length} {orderedGroups.length === 1 ? 'grupo' : 'grupos'}
             </span>
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none" />
@@ -199,8 +201,8 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
 
           <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
-              ['Renda recebida', summary.income],
-              ['Salário planejado', planning.plannedSalary],
+              ['Renda total do ciclo', summary.income],
+              ['Salário do ciclo', planning.plannedSalary],
               ['Restante da meta', summary.expenseRemaining],
               ['Meta de investimento', summary.totalInvestmentGoal],
             ].map(([label, value]) => (
@@ -214,7 +216,7 @@ export function CycleOverview({ planning, domain, periodLabel, readOnly }: {
           </dl>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {getOrderedBudgetGroups(domain).map(groupRecord => {
+            {orderedGroups.map(groupRecord => {
               const Icon = getGroupIcon(groupRecord.icon);
               const actual = summary.groupTotals[groupRecord.id] ?? 0;
               const subgoal = summary.subgoals[groupRecord.id] ?? { percent: 0, amount: 0 };

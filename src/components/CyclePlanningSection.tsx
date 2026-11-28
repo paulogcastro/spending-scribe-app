@@ -116,17 +116,12 @@ function CardSaveFooter({
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             <span>{errorMessage}</span>
           </span>
-        ) : dirty ? (
-          <span className="inline-flex items-center gap-1.5 font-medium text-warning">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-warning" />
-            Alterações não salvas
-          </span>
-        ) : (
+        ) : !dirty ? (
           <span className="inline-flex items-center gap-1.5 text-muted-foreground">
             <Check className="h-3.5 w-3.5 shrink-0 text-success" />
             Salvo
           </span>
-        )}
+        ) : null}
       </div>
 
       <div className="flex items-center gap-2">
@@ -174,8 +169,7 @@ export function CyclePlanningSection({
   const { planning, derived, mutate, readOnly } = cyclePlanning;
 
   // Draft: Renda do ciclo
-  const [plannedSalaryDraft, setPlannedSalaryDraft] = useState(planning.plannedSalary);
-  const [receivedSalaryDraft, setReceivedSalaryDraft] = useState(planning.receivedSalary);
+  const [salaryDraft, setSalaryDraft] = useState(planning.plannedSalary);
   const [extraAmountsDraft, setExtraAmountsDraft] = useState<Record<string, number>>(() =>
     Object.fromEntries(planning.extraIncomes.map(item => [item.id, item.amount]))
   );
@@ -194,10 +188,9 @@ export function CyclePlanningSection({
   }));
 
   useEffect(() => {
-    setPlannedSalaryDraft(planning.plannedSalary);
-    setReceivedSalaryDraft(planning.receivedSalary);
+    setSalaryDraft(planning.plannedSalary);
     setExtraAmountsDraft(Object.fromEntries(planning.extraIncomes.map(item => [item.id, item.amount])));
-  }, [planning.plannedSalary, planning.receivedSalary, planning.extraIncomes]);
+  }, [planning.plannedSalary, planning.extraIncomes]);
 
   useEffect(() => {
     setInvestmentBaseDraft(planning.investmentBaseGoal);
@@ -220,8 +213,7 @@ export function CyclePlanningSection({
   // Dirty checks
   const hasPendingNewExtra = isAdding && newItem.description.trim().length > 0;
   const incomeDirty =
-    plannedSalaryDraft !== planning.plannedSalary ||
-    receivedSalaryDraft !== planning.receivedSalary ||
+    salaryDraft !== planning.plannedSalary ||
     planning.extraIncomes.some(item => (extraAmountsDraft[item.id] ?? item.amount) !== item.amount) ||
     hasPendingNewExtra;
 
@@ -295,8 +287,8 @@ export function CyclePlanningSection({
 
   const handleSaveIncome = () => {
     const ok = mutate(plan => {
-      let next = setPlannedSalary(plan, plannedSalaryDraft);
-      next = setReceivedSalary(next, receivedSalaryDraft);
+      let next = setPlannedSalary(plan, salaryDraft);
+      next = setReceivedSalary(next, salaryDraft);
       for (const item of next.extraIncomes) {
         const draftAmt = extraAmountsDraft[item.id];
         if (draftAmt !== undefined && draftAmt !== item.amount) {
@@ -318,8 +310,7 @@ export function CyclePlanningSection({
   };
 
   const handleCancelIncome = () => {
-    setPlannedSalaryDraft(planning.plannedSalary);
-    setReceivedSalaryDraft(planning.receivedSalary);
+    setSalaryDraft(planning.plannedSalary);
     setExtraAmountsDraft(Object.fromEntries(planning.extraIncomes.map(item => [item.id, item.amount])));
     setNewItem({ description: '', amount: 0 });
     setIsAdding(false);
@@ -372,13 +363,13 @@ export function CyclePlanningSection({
   };
 
   const incomeError =
-    plannedSalaryDraft < planning.investmentBaseGoal
-      ? 'Salário planejado não pode ser menor que a meta de investimento.'
+    salaryDraft < planning.investmentBaseGoal
+      ? 'O salário do ciclo não pode ser menor que a meta de investimento.'
       : null;
 
   const investmentError =
     investmentBaseDraft > planning.plannedSalary
-      ? 'Meta maior que o salário planejado salvo.'
+      ? 'Meta maior que o salário do ciclo salvo.'
       : null;
 
   const distributionError = distributionOver100
@@ -397,48 +388,22 @@ export function CyclePlanningSection({
               </div>
               <div>
                 <h3 className="text-sm font-bold">Renda do ciclo</h3>
-                <p className="text-xs text-muted-foreground">Planejado define os limites · Recebido calcula o saldo em caixa</p>
+                <p className="text-xs text-muted-foreground">Define os limites de gastos e o saldo disponível no ciclo</p>
               </div>
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <div className="flex min-h-5 items-center justify-between gap-2">
-                    <label className="text-xs font-medium text-muted-foreground" htmlFor={`planned-salary-${cycleId}`}>
-                      Salário planejado
-                    </label>
-                  </div>
-                  <CurrencyInput
-                    id={`planned-salary-${cycleId}`}
-                    value={plannedSalaryDraft}
-                    onChange={setPlannedSalaryDraft}
-                    className="mt-1.5 h-11 text-sm"
-                    disabled={readOnly}
-                  />
-                </div>
-                <div>
-                  <div className="flex min-h-5 items-center justify-between gap-2">
-                    <label className="text-xs font-medium text-muted-foreground" htmlFor={`received-salary-${cycleId}`}>
-                      Salário recebido
-                    </label>
-                    <button
-                      type="button"
-                      disabled={readOnly}
-                      onClick={() => setReceivedSalaryDraft(plannedSalaryDraft)}
-                      className="whitespace-nowrap text-xs font-semibold text-primary hover:underline disabled:opacity-50"
-                    >
-                      Igual ao planejado
-                    </button>
-                  </div>
-                  <CurrencyInput
-                    id={`received-salary-${cycleId}`}
-                    value={receivedSalaryDraft}
-                    onChange={setReceivedSalaryDraft}
-                    className="mt-1.5 h-11 text-sm"
-                    disabled={readOnly}
-                  />
-                </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground" htmlFor={`cycle-salary-${cycleId}`}>
+                  Salário do ciclo
+                </label>
+                <CurrencyInput
+                  id={`cycle-salary-${cycleId}`}
+                  value={salaryDraft}
+                  onChange={setSalaryDraft}
+                  className="mt-1.5 h-11 text-sm"
+                  disabled={readOnly}
+                />
               </div>
 
               <div className="border-t border-border pt-4">
@@ -879,7 +844,7 @@ export function CyclePlanningSection({
 
             <div className="space-y-2.5 text-xs">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground">Salário planejado</span>
+                <span className="text-muted-foreground">Salário do ciclo</span>
                 <span className="font-semibold tabular-nums">{formatCurrency(planning.plannedSalary)}</span>
               </div>
               <div className="flex items-center justify-between gap-2">

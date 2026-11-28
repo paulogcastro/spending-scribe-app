@@ -174,7 +174,8 @@ export function computeCycleOverview(plan: CyclePlanning, domain: ExpenseDomainS
   }
   for (const group of Object.keys(groupTotals)) groupTotals[group] = roundMoney(groupTotals[group]);
   const expenses = roundMoney(Object.values(groupTotals).reduce((sum, value) => sum + value, 0));
-  const income = roundMoney(plan.receivedSalary + planning.extraIncomeTotal);
+  const effectiveSalary = plan.receivedSalary > 0 ? plan.receivedSalary : plan.plannedSalary;
+  const income = roundMoney(effectiveSalary + planning.extraIncomeTotal);
   return {
     ...planning, subgoals, income, expenses, groupTotals,
     availableToInvest: roundMoney(income - expenses),
