@@ -8,13 +8,23 @@ import {
   Trash2,
   Percent,
   Check,
-  X,
   Save,
   AlertCircle,
+  Pencil,
+  CalendarDays,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { formatCurrency } from '@/lib/format';
 import {
   addExtraIncome,
@@ -29,9 +39,16 @@ import {
   computeSubgoals,
   roundMoney,
 } from '@/lib/cyclePlanning';
-import type { BudgetGroupRecord } from '@/lib/expenseDomain';
+import { localExpenseDate, type BudgetGroupRecord } from '@/lib/expenseDomain';
 import { getGroupColorStyles } from '@/components/budgetGroupStyles';
 import { useCyclePlanning } from '@/hooks/useCyclePlanning';
+
+function formatReceiptDate(isoDate?: string): string {
+  if (!isoDate) return 'Data não informada';
+  const parts = isoDate.split('-');
+  if (parts.length !== 3) return isoDate;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
 
 function PercentInput({
   value,
@@ -153,6 +170,13 @@ function CardSaveFooter({
   );
 }
 
+interface ExtraIncomeEditor {
+  id?: string;
+  description: string;
+  amount: number;
+  date: string;
+}
+
 export function CyclePlanningSection({
   cycleId,
   cyclePlanning,
@@ -170,13 +194,7 @@ export function CyclePlanningSection({
 
   // Draft: Renda do ciclo
   const [salaryDraft, setSalaryDraft] = useState(planning.plannedSalary);
-  const [extraAmountsDraft, setExtraAmountsDraft] = useState<Record<string, number>>(() =>
-    Object.fromEntries(planning.extraIncomes.map(item => [item.id, item.amount]))
-  );
-  const [draftDescription, setDraftDescription] = useState('');
-  const [isAdding, setIsAdding] = useState(false);
-  const [newItem, setNewItem] = useState({ description: '', amount: 0 });
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [extraEditor, setExtraEditor] = useState<ExtraIncomeEditor | null>(null);
 
   // Draft: Meta de investimento
   const [investmentBaseDraft, setInvestmentBaseDraft] = useState(planning.investmentBaseGoal);
@@ -189,8 +207,7 @@ export function CyclePlanningSection({
 
   useEffect(() => {
     setSalaryDraft(planning.plannedSalary);
-    setExtraAmountsDraft(Object.fromEntries(planning.extraIncomes.map(item => [item.id, item.amount])));
-  }, [planning.plannedSalary, planning.extraIncomes]);
+  }, [planning.plannedSalary]);
 
   useEffect(() => {
     setInvestmentBaseDraft(planning.investmentBaseGoal);
@@ -211,11 +228,7 @@ export function CyclePlanningSection({
   );
 
   // Dirty checks
-  const hasPendingNewExtra = isAdding && newItem.description.trim().length > 0;
-  const incomeDirty =
-    salaryDraft !== planning.plannedSalary ||
-    planning.extraIncomes.some(item => (extraAmountsDraft[item.id] ?? item.amount) !== item.amount) ||
-    hasPendingNewExtra;
+  const incomeDirty = salaryDraft !== planning.plannedSalary;
 
   const investmentDirty =
     investmentBaseDraft !== planning.investmentBaseGoal ||
@@ -226,10 +239,7 @@ export function CyclePlanningSection({
   );
 
   // Live previews using pure functions
-  const extraIncomePreviewTotal = roundMoney(
-    planning.extraIncomes.reduce((sum, item) => sum + (extraAmountsDraft[item.id] ?? item.amount), 0) +
-      (hasPendingNewExtra ? newItem.amount : 0)
-  );
+  const totalCycleIncomePreview = roundMoney(salaryDraft + derived.extraIncomeTotal);
 
   const investmentPreview = useMemo(
     () =>
@@ -272,48 +282,51 @@ export function CyclePlanningSection({
   const incomeExpensePct = planning.plannedSalary > 0 ? Math.max(0, 100 - incomeInvestPct) : 0;
   const dailyAvg = totalDays > 0 ? Math.max(0, subgoals.diarias?.amount ?? 0) / totalDays : 0;
 
+  const sortedExtraIncomes = useMemo(
+    () => [...planning.extraIncomes].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')),
+    [planning.extraIncomes]
+  );
+
   // Handlers: Renda do ciclo
-  const handleAddExtra = () => {
-    if (!newItem.description.trim()) {
+  const handleSaveSalary = () => {
+    const ok = mutate(plan => {
+      const next = setPlannedSalary(plan, salaryDraft);
+      return setReceivedSalary(next, salaryDraft);
+    });
+    if (ok) {
+      toast.success('Salário do ciclo salvo.');
+    }
+  };
+
+  const handleCancelSalary = () => {
+    setSalaryDraft(planning.plannedSalary);
+  };
+
+  const handleSaveExtraModal = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!extraEditor) return;
+    if (!extraEditor.description.trim()) {
       toast.error('Informe uma descrição para a renda extra.');
       return;
     }
-    if (mutate(plan => addExtraIncome(plan, newItem))) {
-      setNewItem({ description: '', amount: 0 });
-      setIsAdding(false);
-      toast.success('Renda extra adicionada.');
-    }
-  };
-
-  const handleSaveIncome = () => {
     const ok = mutate(plan => {
-      let next = setPlannedSalary(plan, salaryDraft);
-      next = setReceivedSalary(next, salaryDraft);
-      for (const item of next.extraIncomes) {
-        const draftAmt = extraAmountsDraft[item.id];
-        if (draftAmt !== undefined && draftAmt !== item.amount) {
-          next = updateExtraIncome(next, item.id, { amount: draftAmt });
-        }
+      if (extraEditor.id) {
+        return updateExtraIncome(plan, extraEditor.id, {
+          description: extraEditor.description,
+          amount: extraEditor.amount,
+          date: extraEditor.date || undefined,
+        });
       }
-      if (isAdding && newItem.description.trim()) {
-        next = addExtraIncome(next, newItem);
-      }
-      return next;
+      return addExtraIncome(plan, {
+        description: extraEditor.description,
+        amount: extraEditor.amount,
+        date: extraEditor.date || undefined,
+      });
     });
     if (ok) {
-      if (isAdding && newItem.description.trim()) {
-        setNewItem({ description: '', amount: 0 });
-        setIsAdding(false);
-      }
-      toast.success('Renda do ciclo salva.');
+      toast.success(extraEditor.id ? 'Renda extra atualizada.' : 'Renda extra adicionada.');
+      setExtraEditor(null);
     }
-  };
-
-  const handleCancelIncome = () => {
-    setSalaryDraft(planning.plannedSalary);
-    setExtraAmountsDraft(Object.fromEntries(planning.extraIncomes.map(item => [item.id, item.amount])));
-    setNewItem({ description: '', amount: 0 });
-    setIsAdding(false);
   };
 
   // Handlers: Meta de investimento
@@ -381,22 +394,31 @@ export function CyclePlanningSection({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Card: Renda do ciclo */}
         <div data-tour="income-card" className="flex min-w-0 flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-card">
-          <div>
-            <div className="mb-4 flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-                <Wallet className="h-4 w-4 text-primary" />
+          <div className="space-y-4">
+            <div className="flex min-h-[2.75rem] flex-wrap items-start justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <Wallet className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">Renda do ciclo</h3>
+                  <p className="text-xs text-muted-foreground">Salário e entradas extras que compõem o ciclo</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-bold">Renda do ciclo</h3>
-                <p className="text-xs text-muted-foreground">Define os limites de gastos e o saldo disponível no ciclo</p>
-              </div>
+              {totalCycleIncomePreview > 0 && (
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary tabular-nums">
+                  Total: {formatCurrency(totalCycleIncomePreview)}
+                </span>
+              )}
             </div>
 
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="text-xs font-medium text-muted-foreground" htmlFor={`cycle-salary-${cycleId}`}>
-                  Salário do ciclo
-                </label>
+                <div className="flex min-h-5 items-center justify-between gap-2">
+                  <label className="text-xs font-medium text-muted-foreground" htmlFor={`cycle-salary-${cycleId}`}>
+                    Salário do ciclo
+                  </label>
+                </div>
                 <CurrencyInput
                   id={`cycle-salary-${cycleId}`}
                   value={salaryDraft}
@@ -405,159 +427,106 @@ export function CyclePlanningSection({
                   disabled={readOnly}
                 />
               </div>
-
-              <div className="border-t border-border pt-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-muted-foreground">Rendas extras</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    aria-label="Adicionar renda extra"
-                    onClick={() => setIsAdding(true)}
-                    disabled={readOnly || isAdding}
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" />
-                    Adicionar
-                  </Button>
+              <div>
+                <div className="flex min-h-5 items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">Total de rendas extras</span>
+                  {planning.extraIncomes.length > 0 && (
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {planning.extraIncomes.length} {planning.extraIncomes.length === 1 ? 'entrada' : 'entradas'}
+                    </span>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  {planning.extraIncomes.map(item => (
-                    <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem] items-center gap-2 py-1.5">
-                      <div className="min-w-0">
-                        {editingId === item.id ? (
-                          <Input
-                            aria-label="Descrição da renda extra"
-                            value={draftDescription}
-                            onChange={e => setDraftDescription(e.target.value)}
-                            onBlur={() => {
-                              if (editingId !== item.id) return;
-                              setEditingId(null);
-                              if (draftDescription.trim() === item.description) return;
-                              if (!draftDescription.trim()) {
-                                toast.error('A descrição não pode ficar vazia. O valor anterior foi mantido.');
-                                return;
-                              }
-                              if (mutate(plan => updateExtraIncome(plan, item.id, { description: draftDescription }))) {
-                                toast.success('Descrição atualizada.');
-                              }
-                            }}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') e.currentTarget.blur();
-                              if (e.key === 'Escape') setEditingId(null);
-                            }}
-                            className="h-11 text-sm"
-                            autoFocus
-                          />
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            className="h-auto min-h-11 w-full justify-start whitespace-normal break-words px-2 text-left text-sm"
-                            disabled={readOnly}
-                            title="Editar descrição da renda extra"
-                            onClick={() => {
-                              if (readOnly) return;
-                              setDraftDescription(item.description);
-                              setEditingId(item.id);
-                            }}
-                          >
-                            {item.description}
-                          </Button>
-                        )}
+                <div className="mt-1.5 flex h-11 items-center justify-between rounded-md border border-border bg-secondary/45 px-3 text-sm font-bold text-foreground tabular-nums">
+                  <span>{formatCurrency(derived.extraIncomeTotal)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2.5 border-t border-border pt-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-muted-foreground">Rendas extras do ciclo</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  aria-label="Adicionar renda extra"
+                  disabled={readOnly}
+                  onClick={() =>
+                    setExtraEditor({
+                      description: '',
+                      amount: 0,
+                      date: localExpenseDate(),
+                    })
+                  }
+                  className="h-8 gap-1.5 text-xs"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Nova renda extra
+                </Button>
+              </div>
+
+              {sortedExtraIncomes.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
+                  Nenhuma renda extra registrada neste ciclo.
+                </p>
+              ) : (
+                <ul className="divide-y divide-border rounded-xl border border-border">
+                  {sortedExtraIncomes.map(item => (
+                    <li
+                      key={item.id}
+                      className="flex items-center justify-between gap-3 px-3 py-2.5"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{item.description}</p>
+                        <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                          <CalendarDays className="h-3 w-3 shrink-0" />
+                          <span>{formatReceiptDate(item.date)}</span>
+                        </p>
                       </div>
-                      <div className="min-w-0">
-                        <CurrencyInput
-                          aria-label={`Valor de ${item.description}`}
-                          value={extraAmountsDraft[item.id] ?? item.amount}
-                          onChange={value =>
-                            setExtraAmountsDraft(prev => ({ ...prev, [item.id]: value }))
-                          }
-                          className="h-11 text-sm"
-                          disabled={readOnly}
-                        />
-                      </div>
-                      <div className="flex justify-end">
+                      <div className="flex shrink-0 items-center gap-1">
+                        <span className="mr-1 text-sm font-semibold text-success tabular-nums">
+                          + {formatCurrency(item.amount)}
+                        </span>
                         <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Editar ${item.description}`}
+                          title="Editar renda extra"
+                          className="h-8 w-8"
+                          disabled={readOnly}
+                          onClick={() =>
+                            setExtraEditor({
+                              id: item.id,
+                              description: item.description,
+                              amount: item.amount,
+                              date: item.date ?? '',
+                            })
+                          }
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          type="button"
                           size="icon"
                           variant="ghost"
                           aria-label={`Remover ${item.description}`}
-                          className="h-11 w-11"
+                          title="Remover renda extra"
+                          className="h-8 w-8"
+                          disabled={readOnly}
                           onClick={() => {
                             if (mutate(plan => removeExtraIncome(plan, item.id))) {
                               toast.success('Renda extra removida.');
                             }
                           }}
-                          disabled={readOnly}
                         >
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       </div>
-                    </div>
+                    </li>
                   ))}
-                  {isAdding && (
-                    <div className="space-y-2 rounded-xl border border-border bg-secondary/35 p-2.5">
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <Input
-                          aria-label="Descrição da nova renda extra"
-                          placeholder="Descrição (ex.: Freelance)"
-                          value={newItem.description}
-                          onChange={e => setNewItem({ ...newItem, description: e.target.value })}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddExtra();
-                            }
-                            if (e.key === 'Escape') {
-                              setNewItem({ description: '', amount: 0 });
-                              setIsAdding(false);
-                            }
-                          }}
-                          className="h-10 text-sm"
-                          autoFocus
-                        />
-                        <CurrencyInput
-                          aria-label="Valor da nova renda extra"
-                          value={newItem.amount}
-                          onChange={value => setNewItem({ ...newItem, amount: value })}
-                          className="h-10 text-sm"
-                        />
-                      </div>
-                      <div className="flex justify-end gap-1.5">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 gap-1 px-2.5 text-xs"
-                          onClick={() => {
-                            setNewItem({ description: '', amount: 0 });
-                            setIsAdding(false);
-                          }}
-                        >
-                          <X className="h-3.5 w-3.5" />
-                          Cancelar
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="h-8 gap-1 px-2.5 text-xs"
-                          onClick={handleAddExtra}
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                          Adicionar
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  {planning.extraIncomes.length === 0 && !isAdding && (
-                    <p className="py-2 text-xs text-muted-foreground">Nenhuma renda extra neste ciclo.</p>
-                  )}
-                </div>
-                <div className="mt-3 flex items-center justify-between rounded-xl bg-secondary/60 px-3 py-2.5">
-                  <span className="text-xs font-medium text-muted-foreground">Total de rendas extras</span>
-                  <span className="text-sm font-bold text-foreground tabular-nums">
-                    {formatCurrency(extraIncomePreviewTotal)}
-                  </span>
-                </div>
-              </div>
+                </ul>
+              )}
             </div>
           </div>
 
@@ -565,17 +534,17 @@ export function CyclePlanningSection({
             dirty={incomeDirty}
             readOnly={readOnly}
             errorMessage={incomeError}
-            onSave={handleSaveIncome}
-            onCancel={handleCancelIncome}
+            onSave={handleSaveSalary}
+            onCancel={handleCancelSalary}
           />
         </div>
 
         {/* Card: Meta de investimento vs Realizado */}
         <div data-tour="investment-card" className="flex min-w-0 flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-card">
           <div className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex min-h-[2.75rem] flex-wrap items-start justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-investment/10">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-investment/10">
                   <PiggyBank className="h-4 w-4 text-investment" />
                 </div>
                 <div>
@@ -641,55 +610,57 @@ export function CyclePlanningSection({
               </div>
             </div>
 
-            <div className="rounded-xl bg-secondary/50 px-3.5 py-3">
-              <div className="flex items-center justify-between gap-2 text-xs">
-                <span className="text-muted-foreground">Disponível para investir (após gastos)</span>
-                <span
-                  className={`text-sm font-bold tabular-nums ${
-                    availableToInvest >= invGoal
-                      ? 'text-success'
-                      : availableToInvest >= 0
-                        ? 'text-warning'
-                        : 'text-destructive'
+            <div className="space-y-3 border-t border-border pt-4">
+              <div className="rounded-xl bg-secondary/50 px-3.5 py-3">
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-muted-foreground">Disponível para investir (após gastos)</span>
+                  <span
+                    className={`text-sm font-bold tabular-nums ${
+                      availableToInvest >= invGoal
+                        ? 'text-success'
+                        : availableToInvest >= 0
+                          ? 'text-warning'
+                          : 'text-destructive'
+                    }`}
+                  >
+                    {formatCurrency(availableToInvest)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Atingimento da meta</span>
+                  <span className="font-bold tabular-nums">{invGoal > 0 ? `${invPct}% da meta` : 'Sem meta'}</span>
+                </div>
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      invDiff > 0 ? 'bg-success' : invDiff === 0 ? 'bg-investment' : 'bg-warning'
+                    }`}
+                    style={{ width: `${Math.min(100, Math.max(0, invPct))}%` }}
+                  />
+                </div>
+                <p
+                  className={`text-xs font-medium tabular-nums ${
+                    invGoal <= 0
+                      ? 'text-muted-foreground'
+                      : invDiff > 0
+                        ? 'text-success'
+                        : invDiff === 0
+                          ? 'text-investment'
+                          : 'text-warning'
                   }`}
                 >
-                  {formatCurrency(availableToInvest)}
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-2 border-t border-border pt-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Atingimento da meta</span>
-                <span className="font-bold tabular-nums">{invGoal > 0 ? `${invPct}% da meta` : 'Sem meta'}</span>
-              </div>
-              <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    invDiff > 0 ? 'bg-success' : invDiff === 0 ? 'bg-investment' : 'bg-warning'
-                  }`}
-                  style={{ width: `${Math.min(100, Math.max(0, invPct))}%` }}
-                />
-              </div>
-              <p
-                className={`text-xs font-medium tabular-nums ${
-                  invGoal <= 0
-                    ? 'text-muted-foreground'
+                  {invGoal <= 0
+                    ? 'Defina uma meta para acompanhar o atingimento.'
                     : invDiff > 0
-                      ? 'text-success'
+                      ? `Investimento extra: ${formatCurrency(invDiff)} acima da meta!`
                       : invDiff === 0
-                        ? 'text-investment'
-                        : 'text-warning'
-                }`}
-              >
-                {invGoal <= 0
-                  ? 'Defina uma meta para acompanhar o atingimento.'
-                  : invDiff > 0
-                    ? `Investimento extra: ${formatCurrency(invDiff)} acima da meta!`
-                    : invDiff === 0
-                      ? 'Meta exata de investimento atingida.'
-                      : `Faltam ${formatCurrency(Math.abs(invDiff))} para atingir a meta.`}
-              </p>
+                        ? 'Meta exata de investimento atingida.'
+                        : `Faltam ${formatCurrency(Math.abs(invDiff))} para atingir a meta.`}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -799,7 +770,7 @@ export function CyclePlanningSection({
                         onChange={amount => {
                           if (derived.mainExpenseGoal <= 0) {
                             if (amount > 0) {
-                              toast.error('Defina e salve o salário planejado antes de distribuir valores.');
+                              toast.error('Defina e salve o salário do ciclo antes de distribuir valores.');
                             }
                             return;
                           }
@@ -885,6 +856,59 @@ export function CyclePlanningSection({
           onCancel={handleCancelDistribution}
         />
       </div>
+
+      {/* Modal: Nova / Editar renda extra */}
+      <Dialog open={extraEditor !== null} onOpenChange={open => { if (!open) setExtraEditor(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{extraEditor?.id ? 'Editar renda extra' : 'Nova renda extra'}</DialogTitle>
+            <DialogDescription>
+              Entradas extras somam ao saldo disponível do ciclo sem alterar o limite de gastos.
+            </DialogDescription>
+          </DialogHeader>
+          {extraEditor && (
+            <form className="finance-form" onSubmit={handleSaveExtraModal}>
+              <div className="form-wide">
+                <Label htmlFor="extra-income-description">Descrição</Label>
+                <Input
+                  id="extra-income-description"
+                  required
+                  placeholder="Ex.: Freelance, 13º salário, Venda"
+                  value={extraEditor.description}
+                  onChange={e => setExtraEditor({ ...extraEditor, description: e.target.value })}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <Label htmlFor="extra-income-amount">Valor recebido</Label>
+                <CurrencyInput
+                  id="extra-income-amount"
+                  required
+                  value={extraEditor.amount}
+                  onChange={amount => setExtraEditor({ ...extraEditor, amount })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="extra-income-date">Data do recebimento</Label>
+                <Input
+                  id="extra-income-date"
+                  type="date"
+                  value={extraEditor.date}
+                  onChange={e => setExtraEditor({ ...extraEditor, date: e.target.value })}
+                />
+              </div>
+              <DialogFooter className="form-actions">
+                <Button type="button" variant="outline" onClick={() => setExtraEditor(null)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={readOnly}>
+                  Salvar renda extra
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

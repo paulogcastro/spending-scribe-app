@@ -245,3 +245,22 @@ test('copyConfigFrom não copia realizações e valida o ciclo de destino', () =
   assert.equal(copy.extraIncomes.length, 0);
   assert.throws(() => copyConfigFrom(plan, '2026-12-05'));
 });
+
+test('renda extra aceita data civil opcional de recebimento, persiste e rejeita datas inválidas', () => {
+  let plan = createEmptyPlanning('2026-11-04');
+  plan = addExtraIncome(plan, { description: 'Freela', amount: 400, date: '2026-11-18' });
+  const id = plan.extraIncomes[0].id;
+  assert.equal(plan.extraIncomes[0].date, '2026-11-18');
+
+  plan = updateExtraIncome(plan, id, { date: '2026-11-20' });
+  assert.equal(plan.extraIncomes[0].date, '2026-11-20');
+
+  const parsed = parsePlanningState(JSON.stringify(upsertPlanning({ version: 1, plans: {} }, plan)));
+  assert.equal(parsed.plans['2026-11-04'].extraIncomes[0].date, '2026-11-20');
+
+  plan = updateExtraIncome(plan, id, { date: '' });
+  assert.equal(plan.extraIncomes[0].date, undefined);
+
+  assert.throws(() => addExtraIncome(plan, { description: 'Erro', amount: 100, date: '2026-02-31' }));
+  assert.throws(() => addExtraIncome(plan, { description: 'Erro', amount: 100, date: '18/11/2026' }));
+});

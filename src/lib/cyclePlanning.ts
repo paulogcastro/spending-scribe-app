@@ -146,22 +146,53 @@ export function setDistributionAmount(plan: CyclePlanning, group: BudgetGroup, a
   return setDistributionPercent(plan, group, percent);
 }
 
-export function addExtraIncome(plan: CyclePlanning, item: { description: string; amount: number }): CyclePlanning {
+function normalizeOptionalCivilDate(value: unknown): string | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(value)) {
+    throw new Error('Data de recebimento inválida.');
+  }
+  const [year, month, day] = value.split('-').map(Number);
+  const check = new Date(year, month - 1, day, 12, 0, 0, 0);
+  if (check.getFullYear() !== year || check.getMonth() !== month - 1 || check.getDate() !== day) {
+    throw new Error('Data de recebimento inválida.');
+  }
+  return value;
+}
+
+export function addExtraIncome(plan: CyclePlanning, item: { description: string; amount: number; date?: string }): CyclePlanning {
   const description = item.description.trim();
   if (!description) throw new Error('A renda extra precisa de uma descrição.');
   assertMoney(item.amount, 'O valor da renda extra não pode ser negativo.');
-  const entry: ExtraIncome = { id: crypto.randomUUID(), description, amount: roundMoney(item.amount) };
+  const date = normalizeOptionalCivilDate(item.date);
+  const entry: ExtraIncome = {
+    id: crypto.randomUUID(),
+    description,
+    amount: roundMoney(item.amount),
+    ...(date ? { date } : {}),
+  };
   return { ...plan, extraIncomes: [...plan.extraIncomes, entry] };
 }
 
 export function updateExtraIncome(plan: CyclePlanning, id: string, updates: Partial<Omit<ExtraIncome, 'id'>>): CyclePlanning {
   if (updates.amount !== undefined) assertMoney(updates.amount, 'O valor da renda extra não pode ser negativo.');
   if (updates.description !== undefined && !updates.description.trim()) throw new Error('A renda extra precisa de uma descrição.');
+  const hasDateUpdate = Object.prototype.hasOwnProperty.call(updates, 'date');
+  const nextDate = hasDateUpdate ? normalizeOptionalCivilDate(updates.date) : undefined;
   return {
     ...plan,
-    extraIncomes: plan.extraIncomes.map(item => item.id === id
-      ? { ...item, ...(updates.description !== undefined ? { description: updates.description.trim() } : {}), ...(updates.amount !== undefined ? { amount: roundMoney(updates.amount) } : {}) }
-      : item),
+    extraIncomes: plan.extraIncomes.map(item => {
+      if (item.id !== id) return item;
+      const next: ExtraIncome = {
+        ...item,
+        ...(updates.description !== undefined ? { description: updates.description.trim() } : {}),
+        ...(updates.amount !== undefined ? { amount: roundMoney(updates.amount) } : {}),
+      };
+      if (hasDateUpdate) {
+        if (nextDate) next.date = nextDate;
+        else delete next.date;
+      }
+      return next;
+    }),
   };
 }
 
@@ -209,7 +240,8 @@ function parsePlan(cycleId: string, value: unknown): CyclePlanning {
   const extraIncomes: ExtraIncome[] = plan.extraIncomes.map(item => {
     const entry = item as Partial<ExtraIncome> | null;
     if (!entry || typeof entry.id !== 'string' || typeof entry.description !== 'string' || !money(entry.amount)) throw new Error('Renda extra inválida.');
-    return { id: entry.id, description: entry.description, amount: entry.amount as number };
+    const date = normalizeOptionalCivilDate(entry.date);
+    return { id: entry.id, description: entry.description, amount: entry.amount as number, ...(date ? { date } : {}) };
   });
   const dist = plan.distribution as Partial<Record<string, number>> | null;
   if (!dist || typeof dist !== 'object' || Array.isArray(dist)) throw new Error('Distribuição de percentuais inválida.');
